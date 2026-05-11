@@ -6,6 +6,7 @@ const log = execFileSync('git', ['log', '--date=format-local:%Y-%m-%d %H:%M', '-
 });
 
 const zhSummary = {
+  'Add non-destructive backups and recovery': ['新增 PMO 手动数据备份与恢复能力，支持用户数据丢失后从本地快照恢复', '修正内置账号恢复策略，避免覆盖已有用户记录和自定义成员信息', '优化项目图标主色搭配、Sprint 按钮样式和成员表格操作列对齐'],
   'Harden preview login and release changelog': ['增强右侧预览登录自愈能力，修复残留错误用户数据导致的登录失败', '项目卡片图标背景改为纯色，统一视觉风格', '更新日志改为全量记录、逐次递增版本号和具体中文更新点', '左侧菜单更新日志入口改为显示最近更新时间'],
   'Migrate legacy preview login users': ['修复右侧预览残留旧用户数据导致默认账号无法登录的问题', '新增内置账号认证数据迁移，保留项目、Sprint、需求等业务数据', '补充旧预览数据迁移与密码保护测试'],
   'Fix preview login and table permissions': ['将登录页改为标准表单提交，提升右侧预览登录稳定性', '成员管理表格增加无权限禁用态', '优化关于我们与二级、三级页面底部间距'],
@@ -50,7 +51,6 @@ const rawEntries = log
     const message = messageParts.join('\t');
     return {
       version: versionAt(rows.length, index),
-      commit,
       date,
       message,
       points: zhSummary[message] || fallbackPoints(message),

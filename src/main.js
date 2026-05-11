@@ -234,6 +234,7 @@ const defaultState = {
 };
 
 const storageKey = 'pmo-sprint-api-cache-v2';
+const backupStorageKey = 'pmo-sprint-api-backups-v1';
 const apiClient = {
   transport: 'rest',
   loadState() {
@@ -260,6 +261,21 @@ const apiClient = {
       // Embedded previews can block file:// localStorage writes; keep the UI flow usable.
     }
     return auditLogs;
+  },
+  loadBackups() {
+    try {
+      return JSON.parse(window.localStorage.getItem(backupStorageKey) || '[]');
+    } catch {
+      return [];
+    }
+  },
+  saveBackups(backups) {
+    try {
+      window.localStorage.setItem(backupStorageKey, JSON.stringify(backups));
+    } catch {
+      return false;
+    }
+    return true;
   },
 };
 const savedState = apiClient.loadState();
@@ -290,23 +306,12 @@ function migrateBusinessState(saved) {
 }
 
 function migrateSeedUsers(savedUsers = []) {
-  const seedUsers = new Map(defaultState.users.map((user) => [user.id, user]));
-  const seen = new Set();
-  const users = savedUsers.map((user) => {
-    const seed = seedUsers.get(user.id);
-    if (!seed) return user;
-    seen.add(user.id);
-    return {
-      ...user,
-      name: seed.name,
-      account: seed.account,
-      password: seed.password,
-      role: seed.role,
-      status: seed.status,
-    };
-  });
+  const users = savedUsers.map((user) => ({ ...user }));
+  const existingAccounts = new Set(users.map((user) => user.account).filter(Boolean));
+  const existingIds = new Set(users.map((user) => user.id).filter(Boolean));
   defaultState.users.forEach((seed) => {
-    if (!seen.has(seed.id)) users.unshift(structuredClone(seed));
+    if (existingAccounts.has(seed.account)) return;
+    users.unshift({ ...structuredClone(seed), id: existingIds.has(seed.id) ? `${seed.id}-seed` : seed.id });
   });
   return users;
 }
@@ -498,6 +503,71 @@ function requirementWetaskUrl(req) {
 function persistState(event = 'state.saved') {
   const { drawer, edit, toast, ...serializableState } = state;
   state.auditLogs = apiClient.saveState(serializableState, event);
+}
+
+function businessSnapshot() {
+  const { drawer, edit, toast, loginError, ...snapshot } = state;
+  return structuredClone(snapshot);
+}
+
+function backupSummary(snapshot) {
+  return {
+    users: snapshot.users?.length || 0,
+    projects: snapshot.projects?.length || 0,
+    sprints: snapshot.sprints?.length || 0,
+    requirements: snapshot.requirements?.length || 0,
+  };
+}
+
+function dataBackups() {
+  return apiClient.loadBackups();
+}
+
+function createDataBackup() {
+  if (!requirePermission(isPmo(), '只有 PMO 可以备份系统数据')) return;
+  const snapshot = businessSnapshot();
+  const backup = {
+    id: uid('backup'),
+    createdAt: new Date().toISOString(),
+    createdBy: state.currentUserId,
+    summary: backupSummary(snapshot),
+    state: snapshot,
+  };
+  const backups = [backup, ...dataBackups()].slice(0, 10);
+  if (!apiClient.saveBackups(backups)) {
+    showToast('备份失败：当前环境无法写入本地备份');
+    return;
+  }
+  showToast('数据备份已创建');
+}
+
+function restoreDataBackup(id) {
+  if (!requirePermission(isPmo(), '只有 PMO 可以恢复系统数据')) return;
+  const backup = dataBackups().find((item) => item.id === id) || dataBackups()[0];
+  if (!backup?.state) {
+    showToast('暂无可恢复的数据备份');
+    return;
+  }
+  if (!window.confirm(`确认恢复 ${formatDateTime(backup.createdAt)} 的数据备份？当前数据会被备份内容替换。`)) return;
+  const activeUserId = state.currentUserId;
+  const restored = migrateBusinessState(backup.state);
+  Object.keys(state).forEach((key) => delete state[key]);
+  Object.assign(state, restored, {
+    currentUserId: restored.users?.some((user) => user.id === activeUserId && user.status === 'active') ? activeUserId : restored.currentUserId,
+    view: 'users',
+    drawer: null,
+    edit: null,
+    toast: '',
+    loginError: '',
+  });
+  normalizeState();
+  persistState('data.restored');
+  showToast('数据已从备份恢复');
+}
+
+function formatDateTime(value = '') {
+  if (!value) return '-';
+  return String(value).replace('T', ' ').slice(0, 16);
 }
 
 function exportBundle(format = 'csv') {
@@ -921,15 +991,50 @@ function renderUserManagement() {
     return '';
   }
   const users = visibleUsers();
+  const backups = isPmo() ? dataBackups() : [];
+  const latestBackup = backups[0];
   return `
     <main class="project-overview">
+      ${isPmo() ? `
+      <section class="panel card backup-panel">
+        <div class="section-head">
+          <div>
+            <h2>数据备份</h2>
+            <p class="small">业务数据与系统版本解耦。建议在导入、升级或大批量调整成员前手动备份。</p>
+          </div>
+          <div class="card-actions">
+            <button class="button" data-action="create-backup">手动备份</button>
+            <button class="button" data-action="restore-backup" data-id="${escapeHtml(latestBackup?.id || '')}" ${latestBackup ? '' : 'disabled'}>恢复最近备份</button>
+          </div>
+        </div>
+        <div class="backup-summary-grid">
+          <div><span>最近备份</span><strong>${latestBackup ? escapeHtml(formatDateTime(latestBackup.createdAt)) : '暂无备份'}</strong></div>
+          <div><span>用户</span><strong>${latestBackup?.summary?.users ?? '-'} 个</strong></div>
+          <div><span>项目</span><strong>${latestBackup?.summary?.projects ?? '-'} 个</strong></div>
+          <div><span>Sprint</span><strong>${latestBackup?.summary?.sprints ?? '-'} 个</strong></div>
+        </div>
+        ${backups.length ? `
+          <div class="backup-list">
+            ${backups.slice(0, 3).map((backup) => `
+              <div class="backup-row">
+                <div>
+                  <strong>${escapeHtml(formatDateTime(backup.createdAt))}</strong>
+                  <span>${backup.summary?.users || 0} 用户 · ${backup.summary?.projects || 0} 项目 · ${backup.summary?.sprints || 0} Sprint · ${backup.summary?.requirements || 0} 需求</span>
+                </div>
+                <button class="link-button" data-action="restore-backup" data-id="${escapeHtml(backup.id)}">恢复</button>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      </section>
+      ` : ''}
       <section class="panel card">
         <div class="section-head">
           <div>
             <h2>${isPmo() ? '系统用户' : '项目成员'}</h2>
             <p class="small">${isPmo() ? 'PMO 可设置 PM、成员和角色权限。' : 'PM 可维护普通成员账号，角色权限由 PMO 设置。'}</p>
           </div>
-          <button class="button primary" data-action="new-user">+ ${isPmo() ? '新建用户' : '新建成员'}</button>
+          <button class="button" data-action="new-user">+ ${isPmo() ? '新建用户' : '新建成员'}</button>
         </div>
         <div class="user-table-wrap">
           <table class="user-table">
@@ -1020,7 +1125,7 @@ function renderProjectDashboardCard(project) {
           </div>
           <div class="card-actions">
             ${canManage ? `<button class="button" data-action="edit-project" data-id="${project.id}">编辑项目</button>` : ''}
-            ${canManage ? `<button class="button primary" data-action="new-sprint" data-id="${project.id}">+ Sprint</button>` : ''}
+            ${canManage ? `<button class="button" data-action="new-sprint" data-id="${project.id}">+ Sprint</button>` : ''}
             ${isPmo() ? `
             <details class="advanced-menu">
               <summary aria-label="高级操作">•••</summary>
@@ -2273,13 +2378,13 @@ function resolveLoginUser(account, password) {
   const seed = defaultState.users.find((item) => item.account === account && item.password === password && item.status === 'active');
   if (!seed) return exact;
 
-  const index = state.users.findIndex((item) => item.id === seed.id);
-  if (state.users[index]?.authManaged) return exact;
-  const repaired = { ...(index >= 0 ? state.users[index] : {}), ...structuredClone(seed) };
-  if (index >= 0) state.users[index] = repaired;
-  else state.users.unshift(repaired);
+  const exists = state.users.some((item) => item.account === seed.account);
+  if (!exists) {
+    const existingIds = new Set(state.users.map((item) => item.id));
+    state.users.unshift({ ...structuredClone(seed), id: existingIds.has(seed.id) ? `${seed.id}-seed` : seed.id });
+  }
   state.authSeedVersion = authSeedVersion;
-  return repaired;
+  return state.users.find((item) => item.account === seed.account && item.status === 'active');
 }
 
 function logout() {
@@ -2425,6 +2530,8 @@ app.addEventListener('click', (event) => {
   if (action === 'export-csv') exportBundle('csv');
   if (action === 'export-xls') exportBundle('xls');
   if (action === 'import-data') document.querySelector('#import-file')?.click();
+  if (action === 'create-backup') createDataBackup();
+  if (action === 'restore-backup') restoreDataBackup(id);
   if (action === 'new-user') openUserDrawer('create');
   if (action === 'edit-user') openUserDrawer('edit', state.users.find((user) => user.id === id));
   if (action === 'edit-project') openProjectDrawer('edit', state.projects.find((project) => project.id === id));

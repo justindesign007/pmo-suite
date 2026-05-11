@@ -1,11 +1,20 @@
 window.PMO_META = {
-  "version": "0.6.21",
-  "buildDate": "2026-05-11 23:13",
+  "version": "0.6.22",
+  "buildDate": "2026-05-11 23:31",
   "dataSchema": 1,
   "changelog": [
     {
+      "version": "0.6.22",
+      "date": "2026-05-11 23:30",
+      "message": "Add non-destructive backups and recovery",
+      "points": [
+        "新增 PMO 手动数据备份与恢复能力，支持用户数据丢失后从本地快照恢复",
+        "修正内置账号恢复策略，避免覆盖已有用户记录和自定义成员信息",
+        "优化项目图标主色搭配、Sprint 按钮样式和成员表格操作列对齐"
+      ]
+    },
+    {
       "version": "0.6.21",
-      "commit": "10366e0",
       "date": "2026-05-11 23:11",
       "message": "Harden preview login and release changelog",
       "points": [
@@ -17,7 +26,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.20",
-      "commit": "e0271c5",
       "date": "2026-05-11 23:01",
       "message": "Migrate legacy preview login users",
       "points": [
@@ -28,7 +36,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.19",
-      "commit": "f279f32",
       "date": "2026-05-11 22:56",
       "message": "Fix preview login and table permissions",
       "points": [
@@ -39,7 +46,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.18",
-      "commit": "8b84f6a",
       "date": "2026-05-11 22:39",
       "message": "Add sprint creation wizard and user table",
       "points": [
@@ -50,7 +56,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.17",
-      "commit": "4d8ffd5",
       "date": "2026-05-11 22:19",
       "message": "Polish project cards and login account sync",
       "points": [
@@ -61,7 +66,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.16",
-      "commit": "c45defc",
       "date": "2026-05-11 22:04",
       "message": "Refine forms and synchronized member data",
       "points": [
@@ -72,7 +76,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.15",
-      "commit": "3f5476e",
       "date": "2026-05-11 20:17",
       "message": "Use secondary info pages and add favicon",
       "points": [
@@ -83,7 +86,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.14",
-      "commit": "71b7521",
       "date": "2026-05-11 19:54",
       "message": "Add info popovers and scoped sprint edit pages",
       "points": [
@@ -94,7 +96,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.13",
-      "commit": "e4067a4",
       "date": "2026-05-11 19:34",
       "message": "Polish marked UI details",
       "points": [
@@ -105,7 +106,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.12",
-      "commit": "5073546",
       "date": "2026-05-11 19:27",
       "message": "Refine user management and release metadata",
       "points": [
@@ -116,7 +116,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.11",
-      "commit": "bf33bee",
       "date": "2026-05-11 19:01",
       "message": "Add functional coverage for sprint detail flow",
       "points": [
@@ -126,7 +125,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.10",
-      "commit": "e9295c9",
       "date": "2026-05-11 18:08",
       "message": "Use account login and fixed sidebar layout",
       "points": [
@@ -136,7 +134,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.9",
-      "commit": "549944c",
       "date": "2026-05-11 17:42",
       "message": "Refine sidebar account actions and permissions",
       "points": [
@@ -146,7 +143,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.8",
-      "commit": "752ea35",
       "date": "2026-05-11 17:30",
       "message": "Fix preview login without bypassing auth",
       "points": [
@@ -156,7 +152,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.7",
-      "commit": "d63369e",
       "date": "2026-05-11 17:17",
       "message": "Fix preview login entry",
       "points": [
@@ -166,7 +161,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.6",
-      "commit": "83a2bbb",
       "date": "2026-05-11 17:04",
       "message": "Add direct login click fallback",
       "points": [
@@ -176,7 +170,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.5",
-      "commit": "1c49fc9",
       "date": "2026-05-11 16:55",
       "message": "Handle login via explicit click action",
       "points": [
@@ -185,7 +178,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.4",
-      "commit": "e112fff",
       "date": "2026-05-11 16:36",
       "message": "Allow debug login from empty login form",
       "points": [
@@ -194,7 +186,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.3",
-      "commit": "2209cc6",
       "date": "2026-05-11 16:27",
       "message": "Refine login page presentation",
       "points": [
@@ -203,7 +194,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.2",
-      "commit": "cc3c94a",
       "date": "2026-05-11 16:18",
       "message": "Add login and role-based permissions",
       "points": [
@@ -213,7 +203,6 @@ window.PMO_META = {
     },
     {
       "version": "0.6.1",
-      "commit": "56be66f",
       "date": "2026-05-11 15:37",
       "message": "Initial open source PMO Suite MVP",
       "points": [

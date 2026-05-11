@@ -160,8 +160,8 @@ test('corrupted seeded preview credentials self-heal during login', () => {
 
   assert.doesNotMatch(app.innerHTML, /login-page/);
   const saved = storedState(store);
-  assert.equal(saved.users.find((user) => user.id === 'u-1').account, 'zhangsan');
-  assert.equal(saved.users.find((user) => user.id === 'u-1').status, 'active');
+  assert.equal(saved.users.some((user) => user.account === 'old-admin'), true);
+  assert.equal(saved.users.some((user) => user.account === 'zhangsan' && user.status === 'active'), true);
   assert.equal(saved.projects.some((project) => project.id === 'p-preview'), true);
 });
 
@@ -392,6 +392,37 @@ test('user drawer uses account-only fields and validates password confirmation',
   });
   assert.doesNotMatch(app.innerHTML, /login-page/);
   assert.match(app.innerHTML, /newmember/);
+});
+
+test('PMO can create and restore local data backups without clearing custom users', () => {
+  const { app, listeners, store } = createRuntime({ currentUserId: 'u-1' });
+
+  click(listeners, 'open-users');
+  click(listeners, 'new-user');
+  submit(listeners, 'user', {
+    id: 'u-backup',
+    account: 'backupuser',
+    name: '备份用户',
+    password: 'abc123',
+    confirmPassword: 'abc123',
+    role: 'member',
+    status: 'active',
+  });
+  click(listeners, 'open-users');
+  assert.match(app.innerHTML, /数据备份/);
+  assert.match(app.innerHTML, /data-action="create-backup"/);
+  click(listeners, 'create-backup');
+
+  const backups = JSON.parse(store.get('pmo-sprint-api-backups-v1'));
+  assert.equal(backups.length, 1);
+  assert.equal(backups[0].summary.users, 5);
+
+  click(listeners, 'delete-user', { id: 'u-backup' });
+  assert.equal(storedState(store).users.some((user) => user.id === 'u-backup'), false);
+
+  click(listeners, 'restore-backup', { id: backups[0].id });
+  assert.equal(storedState(store).users.some((user) => user.id === 'u-backup'), true);
+  assert.match(app.innerHTML, /数据已从备份恢复/);
 });
 
 test('saved business data survives app metadata and schema updates', () => {
