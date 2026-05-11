@@ -95,6 +95,10 @@ function submit(listeners, formName, fields) {
   });
 }
 
+function storedState(store) {
+  return JSON.parse(store.get('pmo-sprint-api-cache-v2'));
+}
+
 test('strict account login works when preview storage writes are blocked', () => {
   const { app, context } = createRuntime(null, { blockStorage: true });
 
@@ -241,4 +245,124 @@ test('member write operations are blocked even if events are triggered manually'
   click(listeners, 'new-project');
   assert.doesNotMatch(app.innerHTML, /data-form="project"/);
   assert.match(app.innerHTML, /只有 PMO 可以创建项目/);
+});
+
+test('user drawer uses account-only fields and validates password confirmation', () => {
+  const { app, listeners, store, context } = createRuntime({ currentUserId: 'u-1' });
+
+  click(listeners, 'open-users');
+  click(listeners, 'new-user');
+  assert.match(app.innerHTML, /data-form="user"/);
+  assert.match(app.innerHTML, /用户账号/);
+  assert.doesNotMatch(app.innerHTML, /<label>邮箱<\/label>/);
+  assert.doesNotMatch(app.innerHTML, /<label>状态<\/label>/);
+  assert.match(app.innerHTML, /aria-label="关闭">×<\/button>/);
+
+  submit(listeners, 'user', {
+    account: 'newmember',
+    name: '',
+    email: '',
+    password: 'abc123',
+    confirmPassword: 'abc124',
+    role: 'member',
+    status: 'active',
+  });
+  assert.match(app.innerHTML, /两次输入的密码不一致/);
+  assert.match(app.innerHTML, /data-form="user"/);
+
+  submit(listeners, 'user', {
+    account: 'newmember',
+    name: '',
+    email: '',
+    password: 'abc123',
+    confirmPassword: 'abc123',
+    role: 'member',
+    status: 'active',
+  });
+  assert.match(app.innerHTML, /newmember/);
+  assert.doesNotMatch(app.innerHTML, /drawer open/);
+  assert.equal(storedState(store).users.some((user) => user.account === 'newmember'), true);
+
+  click(listeners, 'edit-user', { id: 'u-3' });
+  assert.match(app.innerHTML, /新密码/);
+  submit(listeners, 'user', {
+    account: 'wangwu',
+    name: '王五',
+    email: '',
+    password: 'newpass',
+    confirmPassword: 'wrongpass',
+    role: 'member',
+    status: 'active',
+  });
+  assert.match(app.innerHTML, /两次输入的密码不一致/);
+  submit(listeners, 'user', {
+    account: 'wangwu',
+    name: '王五',
+    email: '',
+    password: 'newpass',
+    confirmPassword: 'newpass',
+    role: 'member',
+    status: 'active',
+  });
+  assert.equal(storedState(store).users.find((user) => user.id === 'u-3').password, 'newpass');
+
+  click(listeners, 'logout');
+  context.window.pmoLogin({
+    preventDefault() {},
+    stopPropagation() {},
+    target: {
+      closest() {
+        return { fields: { account: 'wangwu', password: '123456' } };
+      },
+    },
+  });
+  assert.match(app.innerHTML, /用户账号或密码不正确/);
+
+  context.window.pmoLogin({
+    preventDefault() {},
+    stopPropagation() {},
+    target: {
+      closest() {
+        return { fields: { account: 'newmember', password: 'abc123' } };
+      },
+    },
+  });
+  assert.doesNotMatch(app.innerHTML, /login-page/);
+  assert.match(app.innerHTML, /newmember/);
+});
+
+test('saved business data survives app metadata and schema updates', () => {
+  const savedState = {
+    schemaVersion: 0,
+    currentUserId: 'u-custom',
+    selectedProjectId: 'p-custom',
+    selectedSprintId: '',
+    users: [
+      { id: 'u-custom', account: 'ownerone', password: 'pw', role: 'pmo', status: 'active' },
+    ],
+    projects: [
+      {
+        id: 'p-custom',
+        name: '保留的业务项目',
+        description: '用户已编辑的数据',
+        owner: 'u-custom',
+        members: ['u-custom'],
+        status: 'active',
+        startDate: '2026-05-01',
+        endDate: '2026-05-31',
+        goal: '验证版本更新不覆盖业务数据',
+        teams: ['产品'],
+      },
+    ],
+    sprints: [],
+    milestones: [],
+    requirements: [],
+    timelineNodes: [],
+  };
+  const { app, store } = createRuntime(savedState);
+
+  assert.match(app.innerHTML, /保留的业务项目/);
+  assert.doesNotMatch(app.innerHTML, /企业客户项目看板 MVP/);
+  assert.match(app.innerHTML, /ownerone/);
+  assert.equal(storedState(store).projects[0].name, '保留的业务项目');
 });

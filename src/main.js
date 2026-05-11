@@ -20,6 +20,13 @@ const pinyinMap = {
   晨: 'chen',
 };
 
+const appMeta = window.PMO_META || {
+  version: '0.0.0',
+  buildDate: 'local',
+  dataSchema: 1,
+  changelog: [],
+};
+
 const statusLabels = {
   planning: '规划中',
   active: '进行中',
@@ -47,6 +54,7 @@ const statusTone = {
 };
 
 const defaultState = {
+  schemaVersion: appMeta.dataSchema,
   view: 'overview',
   selectedProjectId: 'p-1',
   selectedSprintId: 's-1',
@@ -252,10 +260,24 @@ const apiClient = {
   },
 };
 const savedState = apiClient.loadState();
-const state = savedState ? { ...structuredClone(defaultState), ...savedState, drawer: null, toast: '' } : structuredClone(defaultState);
+const state = migrateBusinessState(savedState);
 const app = document.querySelector('#app');
 
 normalizeState();
+
+function migrateBusinessState(saved) {
+  // Keep business data under a stable storage key; app version changes must not reset user data.
+  const base = structuredClone(defaultState);
+  if (!saved) return base;
+  return {
+    ...base,
+    ...saved,
+    schemaVersion: appMeta.dataSchema,
+    drawer: null,
+    toast: '',
+    loginError: '',
+  };
+}
 
 function uid(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -278,6 +300,7 @@ function normalizeState() {
   state.users = systemUsers().map((user) => ({
     ...user,
     account: user.account || defaultAccount(user.name),
+    name: user.name || user.account || defaultAccount(user.name),
     role: normalizeRole(user.role),
     password: user.password || '123456',
     status: user.status || 'active',
@@ -668,6 +691,7 @@ function renderSystemSidebar() {
   const activeProjects = state.projects.filter((project) => project.status === 'active').length;
   const user = currentUser();
   const userInitial = user?.name?.slice(0, 1) || 'U';
+  const changelog = appMeta.changelog?.slice(0, 4) || [];
   return `
     <aside class="system-sidebar">
       <div class="system-brand">
@@ -688,10 +712,25 @@ function renderSystemSidebar() {
         <div class="sidebar-user">
           <div class="sidebar-avatar">${escapeHtml(userInitial)}</div>
           <div>
-            <strong>${escapeHtml(user?.name || '-')}</strong>
-            <span>${roleLabels[currentRole()]} · ${activeProjects} 个进行中项目</span>
+            <strong>${escapeHtml(user?.account || '-')}</strong>
+            <span>${roleLabels[currentRole()]} · ${escapeHtml(user?.name || user?.account || '-')}</span>
           </div>
         </div>
+        <div class="sidebar-account-meta">已登录 · ${activeProjects} 个进行中项目</div>
+        <details class="sidebar-meta">
+          <summary>关于与版本</summary>
+          <div class="sidebar-meta-panel">
+            <strong>PMO Suite</strong>
+            <span>项目与 Sprint 管理 MVP</span>
+            <span>版本 ${escapeHtml(appMeta.version)} · ${escapeHtml(appMeta.buildDate)}</span>
+          </div>
+        </details>
+        <details class="sidebar-meta">
+          <summary>更新日志</summary>
+          <div class="sidebar-meta-panel changelog">
+            ${changelog.map((item) => `<span>${escapeHtml(item.date)} · ${escapeHtml(item.commit)}<br />${escapeHtml(item.message)}</span>`).join('') || '<span>暂无更新日志</span>'}
+          </div>
+        </details>
         <button class="sidebar-logout" data-action="logout">退出</button>
       </div>
     </aside>
@@ -753,7 +792,7 @@ function renderUserManagement() {
         <div class="section-head">
           <div>
             <h2>${isPmo() ? '系统用户' : '项目成员'}</h2>
-            <p class="small">${isPmo() ? 'PMO 可设置 PM、成员和账号状态。' : 'PM 可维护普通成员账号，角色权限由 PMO 设置。'}</p>
+            <p class="small">${isPmo() ? 'PMO 可设置 PM、成员和角色权限。' : 'PM 可维护普通成员账号，角色权限由 PMO 设置。'}</p>
           </div>
           <button class="button primary" data-action="new-user">+ ${isPmo() ? '新建用户' : '新建成员'}</button>
         </div>
@@ -761,8 +800,8 @@ function renderUserManagement() {
           ${users.map((user) => `
             <div class="table-row">
               <div>
-                <strong>${escapeHtml(user.name)}</strong>
-                <p class="small">${escapeHtml(user.account || '-')} · ${escapeHtml(user.email || '-')}</p>
+                <strong>${escapeHtml(user.account || '-')}</strong>
+                <p class="small">${escapeHtml(user.name || user.account || '-')}</p>
               </div>
               <span class="badge neutral">${roleLabels[normalizeRole(user.role)]}</span>
               <span class="small">${user.status === 'active' ? '启用' : '停用'}</span>
@@ -1206,7 +1245,7 @@ function renderDrawer() {
             <p class="eyebrow">PMO 原型表单</p>
             <h2>${title}</h2>
           </div>
-          <button class="button ghost" data-action="close-drawer">关闭</button>
+          <button class="icon-button" data-action="close-drawer" aria-label="关闭">×</button>
         </div>
         ${type === 'project' ? renderProjectForm(draft) : type === 'user' ? renderUserForm(draft) : renderSprintForm(draft)}
       </div>
@@ -1236,16 +1275,17 @@ function renderProjectForm(project) {
 
 function renderUserForm(user) {
   const role = isPmo() ? normalizeRole(user.role) : 'member';
-  const status = isPmo() ? user.status : (user.status || 'active');
+  const isCreate = state.drawer?.mode === 'create';
   return `
     <form data-form="user">
       <div class="form-grid">
-        ${field('姓名', 'name', user.name, 'text', true)}
-        ${field('用户账号', 'account', user.account || defaultAccount(user.name), 'text')}
-        ${field('邮箱', 'email', user.email || '', 'email', true)}
-        ${field('登录密码', 'password', user.password || '123456', 'text', true)}
+        ${field('用户账号', 'account', user.account || defaultAccount(user.name), 'text', true)}
+        ${hiddenField('name', user.name || user.account || '')}
+        ${hiddenField('email', user.email || '')}
+        ${field(isCreate ? '登录密码' : '新密码', 'password', '', 'password', isCreate)}
+        ${field(isCreate ? '确认密码' : '确认新密码', 'confirmPassword', '', 'password', isCreate)}
         ${isPmo() ? selectField('角色', 'role', roleOptions(role)) : `${hiddenField('role', 'member')}<div class="field"><label>角色</label><div class="readonly-field">成员</div></div>`}
-        ${isPmo() ? selectField('状态', 'status', userStatusOptions(status)) : `${hiddenField('status', status)}<div class="field"><label>状态</label><div class="readonly-field">${status === 'active' ? '启用' : '停用'}</div></div>`}
+        ${hiddenField('status', user.status || 'active')}
       </div>
       ${formFooter()}
     </form>
@@ -1471,7 +1511,8 @@ function openUserDrawer(mode, user = null) {
       name: '',
       account: '',
       email: '',
-      password: '123456',
+      password: '',
+      confirmPassword: '',
       role: 'member',
       status: 'active',
     }),
@@ -1599,16 +1640,14 @@ function validateSprint(sprint) {
 }
 
 function validateUser(user) {
-  if (!user.name.trim()) return '用户姓名不能为空';
   user.account = String(user.account || defaultAccount(user.name)).trim().toLowerCase();
+  user.name = user.name || user.account;
   if (!user.account) return '用户账号不能为空';
-  if (!user.email.trim()) return '用户邮箱不能为空';
   if (!user.password?.trim()) return '登录密码不能为空';
+  if (user.password !== user.confirmPassword) return '两次输入的密码不一致';
   if (!isPmo() && normalizeRole(user.role) !== 'member') return 'PM 只能创建或编辑成员账号';
   const duplicateAccount = systemUsers().find((item) => item.id !== user.id && item.account === user.account);
   if (duplicateAccount) return '用户账号不能重复';
-  const duplicate = systemUsers().find((item) => item.id !== user.id && item.email === user.email);
-  if (duplicate) return '用户邮箱不能重复';
   return '';
 }
 
@@ -1672,15 +1711,21 @@ function saveUser(form) {
   const user = readForm(form);
   const existing = state.users.find((item) => item.id === user.id);
   if (!requirePermission(canManageUsers(), '只有 PMO 和 PM 可以保存成员')) return;
+  if (!user.password && existing) {
+    user.password = existing.password;
+    user.confirmPassword = existing.password;
+  }
   if (!isPmo()) {
     user.role = 'member';
     user.status = existing?.status || 'active';
   }
+  user.status = 'active';
   const error = validateUser(user);
   if (error) {
     showToast(error);
     return;
   }
+  delete user.confirmPassword;
   const index = state.users.findIndex((item) => item.id === user.id);
   if (index >= 0) state.users[index] = user;
   else state.users.unshift(user);

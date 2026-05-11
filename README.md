@@ -50,7 +50,23 @@ http://localhost:8000
 npm test
 ```
 
-当前 `npm test` 会执行 `src/main.js` 的 JavaScript 语法检查。
+当前 `npm test` 会执行 `src/main.js` 的 JavaScript 语法检查和核心功能用例。
+
+## 数据与版本
+
+业务数据使用稳定的 `localStorage` key：`pmo-sprint-api-cache-v2`。应用版本、构建信息和更新日志独立保存在 `src/meta.js`，系统迭代不会因为版本号变化覆盖已有项目、Sprint、需求、里程碑和用户数据。
+
+本仓库包含本地 Git hook，用于每次提交前自动刷新 `src/meta.js` 中的更新日志。首次克隆后执行：
+
+```bash
+npm run setup-hooks
+```
+
+如需手动刷新版本元信息：
+
+```bash
+npm run update-meta
+```
 
 ## Git 协作建议
 
