@@ -596,6 +596,10 @@ function filteredSprints(projectId) {
 
 function ensureSelection() {
   const projects = filteredProjects();
+  const selectedSprint = state.sprints.find((sprint) => sprint.id === state.selectedSprintId);
+  if (selectedSprint && projects.some((project) => project.id === selectedSprint.projectId)) {
+    state.selectedProjectId = selectedSprint.projectId;
+  }
   if (!projects.some((project) => project.id === state.selectedProjectId)) {
     state.selectedProjectId = projects[0]?.id || '';
   }
@@ -1791,6 +1795,8 @@ app.addEventListener('click', (event) => {
     render();
   }
   if (action === 'open-sprint') {
+    const sprint = state.sprints.find((item) => item.id === id);
+    if (sprint) state.selectedProjectId = sprint.projectId;
     state.selectedSprintId = id;
     state.view = 'sprintDetail';
     render();
