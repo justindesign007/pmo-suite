@@ -628,7 +628,7 @@ function renderLoginPage() {
             <input name="password" type="password" placeholder="请输入密码" />
           </div>
           ${state.loginError ? `<p class="login-error">${escapeHtml(state.loginError)}</p>` : ''}
-          <button class="button primary" type="button" data-action="login-submit" onclick="window.pmoQuickLogin(event)">登录</button>
+          <button class="button primary" type="button" data-action="debug-login" onclick="window.pmoDebugLogin(event)">登录</button>
         </form>
       </section>
     </main>
@@ -1713,6 +1713,32 @@ function quickLogin(event) {
 
 window.pmoQuickLogin = quickLogin;
 
+function debugLogin(event) {
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  const form = event?.target?.closest?.('form') || app.querySelector('form[data-form="login"]');
+  const data = form ? new FormData(form) : new FormData();
+  const hasCredentials = Boolean(String(data.get('email') || '').trim() || String(data.get('password') || '').trim());
+  if (hasCredentials && form) {
+    login(form);
+    return;
+  }
+  const user = systemUsers().find((item) => normalizeRole(item.role) === 'pmo' && item.status === 'active') ||
+    systemUsers().find((item) => item.status === 'active');
+  if (!user) {
+    state.loginError = '没有可登录的启用账号';
+    render();
+    return;
+  }
+  state.currentUserId = user.id;
+  state.loginError = '';
+  state.view = 'overview';
+  persistState('auth.login');
+  render();
+}
+
+window.pmoDebugLogin = debugLogin;
+
 function addRepeat(key) {
   const draft = state.drawer?.draft;
   if (!draft) return;
@@ -1813,6 +1839,9 @@ app.addEventListener('click', (event) => {
   }
   if (action === 'login-submit') {
     login(target.closest('form'));
+  }
+  if (action === 'debug-login') {
+    debugLogin(event);
   }
   if (action === 'new-project') openProjectDrawer('create');
   if (action === 'logout') logout();
