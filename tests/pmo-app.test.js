@@ -3,9 +3,16 @@ import fs from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 
-const source = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+const source = [
+  '../src/pages/home-page.js',
+  '../src/pages/secondary-pages.js',
+  '../src/pages/tertiary-pages.js',
+  '../src/pages/user-management-page.js',
+  '../src/pages/data-backup-page.js',
+  '../src/main.js',
+].map((file) => fs.readFileSync(new URL(file, import.meta.url), 'utf8')).join('\n');
 
-function createRuntime(savedState = null, { blockStorage = false, meta = null } = {}) {
+function createRuntime(savedState = null, { blockStorage = false, meta = null, initialHash = '' } = {}) {
   const listeners = {};
   const store = new Map();
   if (savedState) store.set('pmo-sprint-api-cache-v2', JSON.stringify(savedState));
@@ -52,6 +59,12 @@ function createRuntime(savedState = null, { blockStorage = false, meta = null } 
     },
     window: {
       PMO_META: meta,
+      location: { hash: initialHash },
+      history: {
+        replaceState(_state, _title, hash) {
+          context.window.location.hash = hash;
+        },
+      },
       localStorage: {
         getItem(key) {
           return store.get(key) || null;
@@ -183,15 +196,18 @@ test('role permissions render as PMO full access, PM project operations, member 
   const pmo = createRuntime({ currentUserId: 'u-1' }).app.innerHTML;
   assert.match(pmo, /data-action="new-project"/);
   assert.match(pmo, /成员管理/);
+  assert.match(pmo, /数据备份/);
 
   const pm = createRuntime({ currentUserId: 'u-2' }).app.innerHTML;
   assert.doesNotMatch(pm, /data-action="new-project"/);
   assert.match(pm, /编辑项目/);
   assert.match(pm, /\+ Sprint/);
   assert.match(pm, /成员管理/);
+  assert.doesNotMatch(pm, /数据备份/);
 
   const member = createRuntime({ currentUserId: 'u-3' }).app.innerHTML;
   assert.doesNotMatch(member, /成员管理/);
+  assert.doesNotMatch(member, /数据备份/);
   assert.doesNotMatch(member, /编辑项目/);
   assert.doesNotMatch(member, /\+ Sprint/);
 });
@@ -408,7 +424,7 @@ test('PMO can create and restore local data backups without clearing custom user
     role: 'member',
     status: 'active',
   });
-  click(listeners, 'open-users');
+  click(listeners, 'open-data-backup');
   assert.match(app.innerHTML, /数据备份/);
   assert.match(app.innerHTML, /data-action="create-backup"/);
   click(listeners, 'create-backup');
@@ -423,6 +439,14 @@ test('PMO can create and restore local data backups without clearing custom user
   click(listeners, 'restore-backup', { id: backups[0].id });
   assert.equal(storedState(store).users.some((user) => user.id === 'u-backup'), true);
   assert.match(app.innerHTML, /数据已从备份恢复/);
+});
+
+test('page route hash restores first-level pages on refresh', () => {
+  const { app, context } = createRuntime({ currentUserId: 'u-1' }, { initialHash: '#/dataBackup' });
+
+  assert.match(app.innerHTML, /数据备份/);
+  assert.match(app.innerHTML, /data-action="create-backup"/);
+  assert.equal(context.window.location.hash, '#/dataBackup');
 });
 
 test('saved business data survives app metadata and schema updates', () => {

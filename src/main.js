@@ -281,8 +281,10 @@ const apiClient = {
 const savedState = apiClient.loadState();
 const state = migrateBusinessState(savedState);
 const app = document.querySelector('#app');
+let pageRegistry = null;
 
 normalizeState();
+applyRouteFromHash();
 
 function migrateBusinessState(saved) {
   // Keep business data under a stable storage key; app version changes must not reset user data.
@@ -570,6 +572,62 @@ function formatDateTime(value = '') {
   return String(value).replace('T', ' ').slice(0, 16);
 }
 
+function pageContext() {
+  return {
+    state,
+    roleLabels,
+    normalizeRole,
+    escapeHtml,
+    isPmo,
+    canManageUsers,
+    visibleUsers,
+    canEditUser,
+    canDeleteUser,
+    dataBackups,
+    formatDateTime,
+    renderProjectOverview,
+    renderSprintPage,
+    renderSprintCreatePage,
+    renderRequirementPage,
+    renderMilestonePage,
+    renderAboutPage,
+    renderChangelogPage,
+    renderSprintEditPage,
+  };
+}
+
+function pages() {
+  if (pageRegistry) return pageRegistry;
+  pageRegistry = Object.values(window.PMO_PAGE_FACTORIES || {}).reduce((registry, factory) => ({
+    ...registry,
+    ...factory(pageContext()),
+  }), {});
+  return pageRegistry;
+}
+
+function renderCurrentPage() {
+  const renderer = pages()[state.view];
+  if (renderer) return renderer();
+  return renderProjectOverview();
+}
+
+function routeViews() {
+  return new Set(['overview', 'users', 'dataBackup', 'about', 'changelog', 'sprintDetail', 'sprintCreate', 'requirementDetail', 'milestoneDetail', 'sprintEditBasic', 'sprintEditPlan', 'sprintEditRequirements']);
+}
+
+function applyRouteFromHash() {
+  const view = window.location?.hash?.replace(/^#\/?/, '').split('/')[0];
+  if (view && routeViews().has(view)) state.view = view;
+}
+
+function syncRouteToHash() {
+  if (!window.history?.replaceState || !routeViews().has(state.view)) return;
+  const nextHash = `#/${state.view}`;
+  if (window.location?.hash !== nextHash) {
+    window.history.replaceState(null, '', nextHash);
+  }
+}
+
 function exportBundle(format = 'csv') {
   const bundle = {
     projects: state.projects,
@@ -754,15 +812,19 @@ function render() {
   if (state.view === 'users' && !canManageUsers()) {
     state.view = 'overview';
   }
+  if (state.view === 'dataBackup' && !isPmo()) {
+    state.view = 'overview';
+  }
   ensureSelection();
   const isDrilldown = ['sprintDetail', 'sprintCreate', 'requirementDetail', 'milestoneDetail', 'sprintEditBasic', 'sprintEditPlan', 'sprintEditRequirements'].includes(state.view);
+  if (state.currentUserId) syncRouteToHash();
 
   app.innerHTML = `
     <section class="app-frame ${isDrilldown ? 'drilldown-frame' : ''}">
       ${isDrilldown ? '' : renderSystemSidebar()}
       <section class="workspace">
         ${renderTopbar()}
-        ${state.view === 'sprintDetail' ? renderSprintPage() : state.view === 'sprintCreate' ? renderSprintCreatePage() : state.view === 'users' ? renderUserManagement() : state.view === 'about' ? renderAboutPage() : state.view === 'changelog' ? renderChangelogPage() : state.view === 'requirementDetail' ? renderRequirementPage() : state.view === 'milestoneDetail' ? renderMilestonePage() : state.view.startsWith('sprintEdit') ? renderSprintEditPage() : renderProjectOverview()}
+        ${renderCurrentPage()}
       </section>
     </section>
     ${renderDrawer()}
@@ -819,6 +881,7 @@ function renderSystemSidebar() {
         <p>工作台</p>
         <button class="system-nav-item ${state.view === 'overview' ? 'active' : ''}" data-action="open-overview">项目总览 <span>${state.projects.length}</span></button>
         ${canManageUsers() ? `<button class="system-nav-item ${state.view === 'users' ? 'active' : ''}" data-action="open-users">成员管理 <span>${visibleUsers().length}</span></button>` : ''}
+        ${isPmo() ? `<button class="system-nav-item ${state.view === 'dataBackup' ? 'active' : ''}" data-action="open-data-backup">数据备份 <span>${dataBackups().length}</span></button>` : ''}
       </nav>
       <div class="system-sidebar-foot">
         <div class="sidebar-user">
@@ -937,6 +1000,7 @@ function renderTopbar() {
     sprintEditPlan: 'Edit Plan',
     sprintEditRequirements: 'Edit Requirements',
     users: 'Users',
+    dataBackup: 'Data Backup',
     about: 'About',
     changelog: 'Changelog',
     requirementDetail: 'Requirement',
@@ -982,91 +1046,6 @@ function renderTopbar() {
         ${canCreateProject() ? '<button class="button" data-action="new-project">+ 新建项目</button>' : ''}
       </div>
     </header>
-  `;
-}
-
-function renderUserManagement() {
-  if (!canManageUsers()) {
-    state.view = 'overview';
-    return '';
-  }
-  const users = visibleUsers();
-  const backups = isPmo() ? dataBackups() : [];
-  const latestBackup = backups[0];
-  return `
-    <main class="project-overview">
-      ${isPmo() ? `
-      <section class="panel card backup-panel">
-        <div class="section-head">
-          <div>
-            <h2>数据备份</h2>
-            <p class="small">业务数据与系统版本解耦。建议在导入、升级或大批量调整成员前手动备份。</p>
-          </div>
-          <div class="card-actions">
-            <button class="button" data-action="create-backup">手动备份</button>
-            <button class="button" data-action="restore-backup" data-id="${escapeHtml(latestBackup?.id || '')}" ${latestBackup ? '' : 'disabled'}>恢复最近备份</button>
-          </div>
-        </div>
-        <div class="backup-summary-grid">
-          <div><span>最近备份</span><strong>${latestBackup ? escapeHtml(formatDateTime(latestBackup.createdAt)) : '暂无备份'}</strong></div>
-          <div><span>用户</span><strong>${latestBackup?.summary?.users ?? '-'} 个</strong></div>
-          <div><span>项目</span><strong>${latestBackup?.summary?.projects ?? '-'} 个</strong></div>
-          <div><span>Sprint</span><strong>${latestBackup?.summary?.sprints ?? '-'} 个</strong></div>
-        </div>
-        ${backups.length ? `
-          <div class="backup-list">
-            ${backups.slice(0, 3).map((backup) => `
-              <div class="backup-row">
-                <div>
-                  <strong>${escapeHtml(formatDateTime(backup.createdAt))}</strong>
-                  <span>${backup.summary?.users || 0} 用户 · ${backup.summary?.projects || 0} 项目 · ${backup.summary?.sprints || 0} Sprint · ${backup.summary?.requirements || 0} 需求</span>
-                </div>
-                <button class="link-button" data-action="restore-backup" data-id="${escapeHtml(backup.id)}">恢复</button>
-              </div>
-            `).join('')}
-          </div>
-        ` : ''}
-      </section>
-      ` : ''}
-      <section class="panel card">
-        <div class="section-head">
-          <div>
-            <h2>${isPmo() ? '系统用户' : '项目成员'}</h2>
-            <p class="small">${isPmo() ? 'PMO 可设置 PM、成员和角色权限。' : 'PM 可维护普通成员账号，角色权限由 PMO 设置。'}</p>
-          </div>
-          <button class="button" data-action="new-user">+ ${isPmo() ? '新建用户' : '新建成员'}</button>
-        </div>
-        <div class="user-table-wrap">
-          <table class="user-table">
-            <thead>
-              <tr>
-                <th>用户账号</th>
-                <th>姓名</th>
-                <th>角色</th>
-                <th>状态</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${users.map((user) => `
-                <tr>
-                  <td><strong>${escapeHtml(user.account || '-')}</strong></td>
-                  <td>${escapeHtml(user.name || '-')}</td>
-                  <td>${roleLabels[normalizeRole(user.role)]}</td>
-                  <td>${user.status === 'active' ? '启用' : '停用'}</td>
-                  <td>
-                    <div class="card-actions table-actions">
-                      ${canEditUser(user) ? `<button class="link-button" data-action="edit-user" data-id="${user.id}">编辑</button>` : '<button class="link-button" disabled>编辑</button>'}
-                      ${canDeleteUser(user) ? `<button class="link-button danger" data-action="delete-user" data-id="${user.id}">删除</button>` : '<button class="link-button danger" disabled>删除</button>'}
-                    </div>
-                  </td>
-                </tr>
-              `).join('') || '<tr><td colspan="5"><div class="empty-state">暂无可管理成员</div></td></tr>'}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </main>
   `;
 }
 
@@ -2509,7 +2488,14 @@ app.addEventListener('click', (event) => {
   }
   if (action === 'open-users') {
     if (!requirePermission(canManageUsers(), '成员无权访问成员管理')) return;
+    state.edit = null;
     state.view = 'users';
+    render();
+  }
+  if (action === 'open-data-backup') {
+    if (!requirePermission(isPmo(), '只有 PMO 可以访问数据备份')) return;
+    state.edit = null;
+    state.view = 'dataBackup';
     render();
   }
   if (action === 'open-overview') {

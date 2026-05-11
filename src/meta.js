@@ -1,8 +1,18 @@
 window.PMO_META = {
-  "version": "0.6.22",
-  "buildDate": "2026-05-11 23:31",
+  "version": "0.6.23",
+  "buildDate": "2026-05-11 23:43",
   "dataSchema": 1,
   "changelog": [
+    {
+      "version": "0.6.23",
+      "date": "2026-05-11 23:43",
+      "message": "Split pages and backup navigation",
+      "points": [
+        "将首页、二级页面、三级页面、用户管理和数据备份拆分为语义化页面文件",
+        "数据备份升级为 PMO 独立一级菜单，成员管理仅保留用户管理职责",
+        "新增 URL hash 页面同步，刷新后可保持当前页面位置"
+      ]
+    },
     {
       "version": "0.6.22",
       "date": "2026-05-11 23:30",
