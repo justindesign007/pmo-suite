@@ -642,6 +642,7 @@ function renderLoginPage() {
 function renderSystemSidebar() {
   const activeProjects = state.projects.filter((project) => project.status === 'active').length;
   const user = currentUser();
+  const userInitial = user?.name?.slice(0, 1) || 'U';
   return `
     <aside class="system-sidebar">
       <div class="system-brand">
@@ -659,8 +660,14 @@ function renderSystemSidebar() {
         ${canManageUsers() ? `<button class="system-nav-item ${state.view === 'users' ? 'active' : ''}" data-action="open-users">成员管理 <span>${visibleUsers().length}</span></button>` : ''}
       </nav>
       <div class="system-sidebar-foot">
-        <span>${escapeHtml(user?.name || '-')} · ${roleLabels[currentRole()]}</span>
-        <strong>${activeProjects}</strong>
+        <div class="sidebar-user">
+          <div class="sidebar-avatar">${escapeHtml(userInitial)}</div>
+          <div>
+            <strong>${escapeHtml(user?.name || '-')}</strong>
+            <span>${roleLabels[currentRole()]} · ${activeProjects} 个进行中项目</span>
+          </div>
+        </div>
+        <button class="sidebar-logout" data-action="logout">退出</button>
       </div>
     </aside>
   `;
@@ -703,8 +710,7 @@ function renderTopbar() {
             <button class="link-button" data-action="import-data">导入</button>
           </div>
         </details>
-        ${canCreateProject() ? '<button class="button primary" data-action="new-project">+ 新建项目</button>' : ''}
-        <button class="button" data-action="logout">退出</button>
+        ${canCreateProject() ? '<button class="button" data-action="new-project">+ 新建项目</button>' : ''}
       </div>
     </header>
   `;

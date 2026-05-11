@@ -245,19 +245,58 @@ button {
 .system-sidebar-foot {
   margin-top: auto;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 18px 10px 4px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  padding: 16px 10px 4px;
+  display: grid;
+  gap: 12px;
 }
 
-.system-sidebar-foot span {
-  color: rgba(255, 255, 255, 0.54);
+.sidebar-user {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.sidebar-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #1f251f;
+  background: var(--primary);
+  font-weight: 900;
+}
+
+.sidebar-user strong,
+.sidebar-user span {
+  display: block;
+}
+
+.sidebar-user strong {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-user span {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.52);
   font-size: 13px;
 }
 
-.system-sidebar-foot strong {
-  font-size: 24px;
+.sidebar-logout {
+  min-height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-logout:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .topbar {
