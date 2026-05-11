@@ -1,8 +1,16 @@
 window.PMO_META = {
   "version": "0.6.0",
-  "buildDate": "2026-05-11 19:54",
+  "buildDate": "2026-05-11 20:17",
   "dataSchema": 1,
   "changelog": [
+    {
+      "commit": "71b7521",
+      "date": "2026-05-11 19:54",
+      "message": "Add info popovers and scoped sprint edit pages",
+      "points": [
+        "完成一次系统功能更新"
+      ]
+    },
     {
       "commit": "e4067a4",
       "date": "2026-05-11 19:34",
@@ -65,15 +73,6 @@ window.PMO_META = {
       "message": "Fix preview login entry",
       "points": [
         "修复预览环境登录入口响应"
-      ]
-    },
-    {
-      "commit": "83a2bbb",
-      "date": "2026-05-11 17:04",
-      "message": "Add direct login click fallback",
-      "points": [
-        "新增登录按钮直接点击兜底逻辑",
-        "提升内嵌预览环境登录稳定性"
       ]
     }
   ]

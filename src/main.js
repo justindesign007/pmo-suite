@@ -67,7 +67,6 @@ const defaultState = {
   loginError: '',
   drawer: null,
   edit: null,
-  infoPanel: '',
   toast: '',
   users: [
     { id: 'u-1', name: '张三', account: 'zhangsan', email: 'zhangsan@example.com', password: '123456', role: 'pmo', status: 'active' },
@@ -243,7 +242,7 @@ const apiClient = {
     }
   },
   saveState(nextState, event) {
-    const { drawer, edit, infoPanel, toast, ...serializableState } = nextState;
+    const { drawer, edit, toast, ...serializableState } = nextState;
     const auditLogs = [
       ...(serializableState.auditLogs || []),
       {
@@ -277,7 +276,6 @@ function migrateBusinessState(saved) {
     schemaVersion: appMeta.dataSchema,
     drawer: null,
     edit: null,
-    infoPanel: '',
     toast: '',
     loginError: '',
   };
@@ -454,7 +452,7 @@ function requirementWetaskUrl(req) {
 }
 
 function persistState(event = 'state.saved') {
-  const { drawer, edit, infoPanel, toast, ...serializableState } = state;
+  const { drawer, edit, toast, ...serializableState } = state;
   state.auditLogs = apiClient.saveState(serializableState, event);
 }
 
@@ -650,11 +648,10 @@ function render() {
       ${isDrilldown ? '' : renderSystemSidebar()}
       <section class="workspace">
         ${renderTopbar()}
-        ${state.view === 'sprintDetail' ? renderSprintPage() : state.view === 'users' ? renderUserManagement() : state.view === 'requirementDetail' ? renderRequirementPage() : state.view === 'milestoneDetail' ? renderMilestonePage() : state.view.startsWith('sprintEdit') ? renderSprintEditPage() : renderProjectOverview()}
+        ${state.view === 'sprintDetail' ? renderSprintPage() : state.view === 'users' ? renderUserManagement() : state.view === 'about' ? renderAboutPage() : state.view === 'changelog' ? renderChangelogPage() : state.view === 'requirementDetail' ? renderRequirementPage() : state.view === 'milestoneDetail' ? renderMilestonePage() : state.view.startsWith('sprintEdit') ? renderSprintEditPage() : renderProjectOverview()}
       </section>
     </section>
     ${renderDrawer()}
-    ${renderInfoPanel()}
     <input id="import-file" type="file" accept=".csv,.xls,.xlsx,.json,text/csv,application/json" hidden />
     <div class="drawer-backdrop ${state.drawer ? 'open' : ''}" data-action="close-drawer"></div>
     <div class="toast ${state.toast ? 'show' : ''}">${escapeHtml(state.toast)}</div>
@@ -710,7 +707,7 @@ function renderSystemSidebar() {
       </div>
       <nav class="system-nav" aria-label="系统菜单">
         <p>工作台</p>
-        <button class="system-nav-item ${state.view !== 'users' ? 'active' : ''}" data-action="open-overview">项目总览 <span>${state.projects.length}</span></button>
+        <button class="system-nav-item ${state.view === 'overview' ? 'active' : ''}" data-action="open-overview">项目总览 <span>${state.projects.length}</span></button>
         ${canManageUsers() ? `<button class="system-nav-item ${state.view === 'users' ? 'active' : ''}" data-action="open-users">成员管理 <span>${visibleUsers().length}</span></button>` : ''}
       </nav>
       <div class="system-sidebar-foot">
@@ -725,10 +722,10 @@ function renderSystemSidebar() {
           <span>已登录</span>
           <button class="sidebar-inline-action" data-action="logout">退出</button>
         </div>
-        <button class="sidebar-meta-trigger" data-action="open-info-panel" data-panel="about">
+        <button class="sidebar-meta-trigger ${state.view === 'about' ? 'active' : ''}" data-action="open-info-page" data-view="about">
           <span>关于我们</span><strong>v${escapeHtml(appMeta.version)}</strong>
         </button>
-        <button class="sidebar-meta-trigger" data-action="open-info-panel" data-panel="changelog">
+        <button class="sidebar-meta-trigger ${state.view === 'changelog' ? 'active' : ''}" data-action="open-info-page" data-view="changelog">
           <span>更新日志</span><strong>${changelog.length} 条</strong>
         </button>
       </div>
@@ -736,68 +733,91 @@ function renderSystemSidebar() {
   `;
 }
 
-function renderInfoPanel() {
-  if (!state.infoPanel) return '';
-  const isAbout = state.infoPanel === 'about';
-  const title = isAbout ? '关于我们' : '更新日志';
+function renderAboutPage() {
   return `
-    <div class="info-popover-backdrop" data-action="close-info-panel">
-      <section class="info-popover panel" onclick="event.stopPropagation()">
-        <div class="info-popover-head">
-          <div>
-            <p class="eyebrow">PMO Suite</p>
-            <h2>${title}</h2>
+    <main class="project-overview info-page">
+      <section class="panel hero info-page-hero">
+        <div class="hero-content">
+          <div class="hero-title">
+            <div>
+              <p class="eyebrow">PMO Suite</p>
+              <h2>关于我们</h2>
+              <p class="muted">致力于打造多 Agent 协同的 AI Native 项目管理系统。</p>
+            </div>
+            <button class="button" data-action="open-overview">返回工作台</button>
           </div>
-          <button class="icon-button" data-action="close-info-panel" aria-label="关闭">×</button>
+          <div class="about-hero">
+            <span class="system-logo" aria-hidden="true"><span class="logo-mark"><i></i><i></i><i></i></span></span>
+            <div>
+              <h3>PMO Suite</h3>
+              <p>版本 ${escapeHtml(appMeta.version)} · 更新 ${escapeHtml(appMeta.buildDate)}</p>
+            </div>
+          </div>
         </div>
-        ${isAbout ? renderAboutPanel() : renderChangelogPanel()}
       </section>
-    </div>
-  `;
-}
-
-function renderAboutPanel() {
-  return `
-    <div class="about-panel">
-      <div class="about-hero">
-        <span class="system-logo" aria-hidden="true"><span class="logo-mark"><i></i><i></i><i></i></span></span>
-        <div>
-          <h3>PMO Suite</h3>
-          <p>版本 ${escapeHtml(appMeta.version)} · 更新 ${escapeHtml(appMeta.buildDate)}</p>
+      <section class="panel card">
+        <div class="section-head">
+          <div>
+            <h2>产品定位</h2>
+            <p class="small">从项目治理、执行协同到智能化交付管理。</p>
+          </div>
         </div>
-      </div>
-      <div class="info-block">
-        <strong>产品定位</strong>
-        <p>面向 PMO、项目 PM 和项目成员的轻量级项目交付管理工作台，用于统一管理项目、Sprint、需求、里程碑和责任人。</p>
-      </div>
-      <div class="info-feature-grid">
-        <span>项目与 Sprint 管理</span>
-        <span>系统级用户与权限</span>
-        <span>需求责任人与 WeTask 链接</span>
-        <span>计划、里程碑与时间轴</span>
-        <span>CSV / Excel 导入导出</span>
-        <span>本地业务数据保护</span>
-      </div>
-    </div>
+        <div class="info-block">
+          <strong>未来规划</strong>
+          <p>PMO Suite 面向 PMO、项目 PM 和项目成员，当前提供轻量级项目交付管理工作台；未来将围绕多 Agent 协同、AI Native 计划生成、风险识别、进度洞察和自动化项目复盘持续演进。</p>
+        </div>
+        <div class="info-feature-grid">
+          <span>项目与 Sprint 管理</span>
+          <span>系统级用户与权限</span>
+          <span>需求责任人与 WeTask 链接</span>
+          <span>计划、里程碑与时间轴</span>
+          <span>CSV / Excel 导入导出</span>
+          <span>本地业务数据保护</span>
+        </div>
+      </section>
+    </main>
   `;
 }
 
-function renderChangelogPanel() {
+function renderChangelogPage() {
   const entries = appMeta.changelog || [];
   return `
-    <div class="changelog-panel">
-      ${entries.length ? entries.map((item) => `
-        <article class="changelog-item">
-          <time>${escapeHtml(item.date || '-')}</time>
-          <div>
-            <strong>${escapeHtml(item.commit || '')}</strong>
-            <ul>
-              ${(item.points?.length ? item.points : [item.message || '系统更新']).map((point) => `<li>${escapeHtml(point)}</li>`).join('')}
-            </ul>
+    <main class="project-overview info-page">
+      <section class="panel hero info-page-hero">
+        <div class="hero-content">
+          <div class="hero-title">
+            <div>
+              <p class="eyebrow">PMO Suite</p>
+              <h2>更新日志</h2>
+              <p class="muted">当前版本 ${escapeHtml(appMeta.version)} · 最近更新 ${escapeHtml(appMeta.buildDate)}</p>
+            </div>
+            <button class="button" data-action="open-overview">返回工作台</button>
           </div>
-        </article>
-      `).join('') : '<div class="timeline-empty">暂无更新日志</div>'}
-    </div>
+        </div>
+      </section>
+      <section class="panel card">
+        <div class="section-head">
+          <div>
+            <h2>版本更新</h2>
+            <p class="small">最近更新排在最前，时间精确到小时和分钟。</p>
+          </div>
+          <span class="badge neutral">${entries.length} 条</span>
+        </div>
+        <div class="changelog-panel">
+          ${entries.length ? entries.map((item) => `
+            <article class="changelog-item">
+              <time>${escapeHtml(item.date || '-')}</time>
+              <div>
+                <strong>版本 ${escapeHtml(appMeta.version)} · ${escapeHtml(item.commit || '')}</strong>
+                <ul>
+                  ${(item.points?.length ? item.points : [item.message || '系统更新']).map((point) => `<li>${escapeHtml(point)}</li>`).join('')}
+                </ul>
+              </div>
+            </article>
+          `).join('') : '<div class="timeline-empty">暂无更新日志</div>'}
+        </div>
+      </section>
+    </main>
   `;
 }
 
@@ -808,6 +828,8 @@ function renderTopbar() {
     sprintEditPlan: 'Edit Plan',
     sprintEditRequirements: 'Edit Requirements',
     users: 'Users',
+    about: 'About',
+    changelog: 'Changelog',
     requirementDetail: 'Requirement',
     milestoneDetail: 'Milestone',
     overview: 'Dashboard',
@@ -2109,7 +2131,7 @@ function removeRepeat(key, index) {
 app.addEventListener('click', (event) => {
   const target = event.target.closest('[data-action]');
   if (!target) return;
-  const { action, id, key, index, panel, section, add } = target.dataset;
+  const { action, id, key, index, view, section, add } = target.dataset;
 
   if (action === 'select-project') {
     state.selectedProjectId = id;
@@ -2156,18 +2178,16 @@ app.addEventListener('click', (event) => {
     render();
   }
   if (action === 'open-overview') {
+    state.edit = null;
     state.view = 'overview';
     render();
   }
   if (action === 'login-submit') {
     submitLogin(event);
   }
-  if (action === 'open-info-panel') {
-    state.infoPanel = panel;
-    render();
-  }
-  if (action === 'close-info-panel') {
-    state.infoPanel = '';
+  if (action === 'open-info-page') {
+    state.edit = null;
+    state.view = view;
     render();
   }
   if (action === 'new-project') openProjectDrawer('create');

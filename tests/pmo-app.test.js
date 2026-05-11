@@ -368,7 +368,7 @@ test('saved business data survives app metadata and schema updates', () => {
   assert.equal(storedState(store).projects[0].name, '保留的业务项目');
 });
 
-test('sidebar about and changelog open as popover with Chinese release notes', () => {
+test('sidebar about and changelog open as secondary pages with Chinese release notes', () => {
   const meta = {
     version: '0.7.0',
     buildDate: '2026-05-11 20:05',
@@ -384,16 +384,19 @@ test('sidebar about and changelog open as popover with Chinese release notes', (
   };
   const { app, listeners } = createRuntime({ currentUserId: 'u-1' }, { meta });
 
-  assert.match(app.innerHTML, /data-action="open-info-panel" data-panel="about"/);
+  assert.match(app.innerHTML, /data-action="open-info-page" data-view="about"/);
   assert.doesNotMatch(app.innerHTML, /<details class="sidebar-meta"/);
 
-  click(listeners, 'open-info-panel', { panel: 'about' });
-  assert.match(app.innerHTML, /info-popover/);
+  click(listeners, 'open-info-page', { view: 'about' });
+  assert.match(app.innerHTML, /PMO \/ About/);
+  assert.match(app.innerHTML, /system-sidebar/);
   assert.match(app.innerHTML, /产品定位/);
-  assert.match(app.innerHTML, /主要功能|项目与 Sprint 管理/);
+  assert.match(app.innerHTML, /多 Agent 协同的 AI Native 项目管理系统/);
+  assert.match(app.innerHTML, /项目与 Sprint 管理/);
 
-  click(listeners, 'close-info-panel');
-  click(listeners, 'open-info-panel', { panel: 'changelog' });
+  click(listeners, 'open-info-page', { view: 'changelog' });
+  assert.match(app.innerHTML, /PMO \/ Changelog/);
+  assert.match(app.innerHTML, /版本 0.7.0/);
   assert.match(app.innerHTML, /2026-05-11 20:04/);
   assert.match(app.innerHTML, /优化左侧信息浮层/);
   assert.match(app.innerHTML, /新增三级编辑页/);
