@@ -459,9 +459,19 @@ button {
 }
 
 .info-page-hero {
+  padding-top: 22px;
+  padding-bottom: 22px;
   background:
     radial-gradient(circle at 84% 8%, rgba(241, 207, 74, 0.16), transparent 28%),
     linear-gradient(135deg, #ffffff, #f7f8f3);
+}
+
+.info-page-hero .hero-title {
+  margin-bottom: 14px;
+}
+
+.about-position-card {
+  padding-top: 18px;
 }
 
 .changelog-panel {
@@ -1069,10 +1079,36 @@ h1 {
   border-radius: 14px;
   padding: 12px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
   align-items: center;
   background: #fff;
+}
+
+.user-field-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 0.7fr 0.7fr;
+  gap: 12px;
+  min-width: 0;
+}
+
+.user-field-grid span,
+.user-field-grid strong {
+  display: block;
+}
+
+.user-field-grid span {
+  margin-bottom: 4px;
+  color: var(--subtle);
+  font-size: 12px;
+}
+
+.user-field-grid strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .panel {
@@ -1875,6 +1911,7 @@ h1 {
   .summary-grid,
   .overview-sprint-list,
   .active-sprint-metrics,
+  .user-field-grid,
   .form-grid {
     grid-template-columns: 1fr;
   }

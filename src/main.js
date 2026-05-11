@@ -755,11 +755,10 @@ function renderAboutPage() {
           </div>
         </div>
       </section>
-      <section class="panel card">
+      <section class="panel card about-position-card">
         <div class="section-head">
           <div>
             <h2>产品定位</h2>
-            <p class="small">从项目治理、执行协同到智能化交付管理。</p>
           </div>
         </div>
         <div class="info-block">
@@ -799,7 +798,6 @@ function renderChangelogPage() {
         <div class="section-head">
           <div>
             <h2>版本更新</h2>
-            <p class="small">最近更新排在最前，时间精确到小时和分钟。</p>
           </div>
           <span class="badge neutral">${entries.length} 条</span>
         </div>
@@ -895,12 +893,24 @@ function renderUserManagement() {
         <div class="table-list">
           ${users.map((user) => `
             <div class="table-row">
-              <div>
-                <strong>${escapeHtml(user.account || '-')}</strong>
-                <p class="small">${escapeHtml(user.name || user.account || '-')}</p>
+              <div class="user-field-grid">
+                <div>
+                  <span>用户账号</span>
+                  <strong>${escapeHtml(user.account || '-')}</strong>
+                </div>
+                <div>
+                  <span>姓名</span>
+                  <strong>${escapeHtml(user.name || '-')}</strong>
+                </div>
+                <div>
+                  <span>角色</span>
+                  <strong>${roleLabels[normalizeRole(user.role)]}</strong>
+                </div>
+                <div>
+                  <span>状态</span>
+                  <strong>${user.status === 'active' ? '启用' : '停用'}</strong>
+                </div>
               </div>
-              <span class="badge neutral">${roleLabels[normalizeRole(user.role)]}</span>
-              <span class="small">${user.status === 'active' ? '启用' : '停用'}</span>
               <div class="card-actions">
                 <button class="link-button" data-action="edit-user" data-id="${user.id}">编辑</button>
                 ${user.id !== state.currentUserId ? `<button class="link-button danger" data-action="delete-user" data-id="${user.id}">删除</button>` : ''}
@@ -1137,7 +1147,7 @@ function renderSprintDetail(sprint) {
       <div class="hero-content">
         <div class="hero-title">
           <div>
-            <p class="eyebrow">Sprint 二级详情</p>
+            <p class="eyebrow">${escapeHtml(project?.name || 'Sprint')}</p>
             <div class="sprint-title-row">
               <h2>${escapeHtml(sprint.name)}</h2>
               ${badge(sprint.status)}
@@ -1157,6 +1167,7 @@ function renderSprintDetail(sprint) {
         <div class="goal-box sprint-goal-box">
           <strong>目标：</strong>${escapeHtml(sprint.goal)}<br />
           <strong>验收：</strong>${escapeHtml(sprint.acceptanceCriteria || '暂未填写')}
+          ${sprint.riskNote ? `<br /><strong>风险：</strong>${escapeHtml(sprint.riskNote)}` : ''}
         </div>
       </div>
     </section>
@@ -1477,7 +1488,6 @@ function renderProjectForm(project) {
         ${canAssignProjectPm ? selectField('项目状态', 'status', projectStatusOptions(project.status)) : hiddenField('status', project.status)}
         ${field('开始日期', 'startDate', project.startDate, 'date', true)}
         ${field('结束日期', 'endDate', project.endDate, 'date', true)}
-        ${canAssignProjectPm ? selectField('参与团队', 'teams', teamOptions(project.teams), true) : hiddenField('teams', project.teams?.join(',') || '')}
         ${textareaField('项目目标', 'goal', project.goal, true)}
         ${textareaField('项目描述', 'description', project.description)}
       </div>
@@ -1493,8 +1503,8 @@ function renderUserForm(user) {
   return `
     <form data-form="user">
       <div class="form-grid">
+        ${field('姓名', 'name', user.name || '', 'text', true)}
         ${field('用户账号', 'account', user.account || defaultAccount(user.name), 'text', true)}
-        ${hiddenField('name', user.name || user.account || '')}
         ${hiddenField('email', user.email || '')}
         ${field(isCreate ? '登录密码' : '新密码', 'password', '', 'password', isCreate)}
         ${field(isCreate ? '确认密码' : '确认新密码', 'confirmPassword', '', 'password', isCreate)}
@@ -1871,7 +1881,8 @@ function validateSprint(sprint) {
 
 function validateUser(user) {
   user.account = String(user.account || defaultAccount(user.name)).trim().toLowerCase();
-  user.name = user.name || user.account;
+  user.name = String(user.name || '').trim();
+  if (!user.name) return '用户姓名不能为空';
   if (!user.account) return '用户账号不能为空';
   if (!user.password?.trim()) return '登录密码不能为空';
   if (user.password !== user.confirmPassword) return '两次输入的密码不一致';

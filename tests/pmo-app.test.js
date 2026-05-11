@@ -254,6 +254,7 @@ test('user drawer uses account-only fields and validates password confirmation',
   click(listeners, 'open-users');
   click(listeners, 'new-user');
   assert.match(app.innerHTML, /data-form="user"/);
+  assert.match(app.innerHTML, /<label>姓名<\/label>/);
   assert.match(app.innerHTML, /用户账号/);
   assert.doesNotMatch(app.innerHTML, /<label>邮箱<\/label>/);
   assert.doesNotMatch(app.innerHTML, /<label>状态<\/label>/);
@@ -261,7 +262,7 @@ test('user drawer uses account-only fields and validates password confirmation',
 
   submit(listeners, 'user', {
     account: 'newmember',
-    name: '',
+    name: '新成员',
     email: '',
     password: 'abc123',
     confirmPassword: 'abc124',
@@ -273,7 +274,7 @@ test('user drawer uses account-only fields and validates password confirmation',
 
   submit(listeners, 'user', {
     account: 'newmember',
-    name: '',
+    name: '新成员',
     email: '',
     password: 'abc123',
     confirmPassword: 'abc123',
@@ -452,4 +453,36 @@ test('sprint edit actions drill down to scoped tertiary pages', () => {
     storedState(store).requirements.find((item) => item.id === 'r-1').wetaskUrl,
     'https://wetask.example.com/requirements/REQ-001-updated',
   );
+});
+
+test('user management changes are immediately available in project member selectors', () => {
+  const { app, listeners } = createRuntime({ currentUserId: 'u-1', selectedProjectId: 'p-1' });
+
+  click(listeners, 'open-users');
+  click(listeners, 'new-user');
+  submit(listeners, 'user', {
+    name: '陈晨',
+    account: 'chenchen',
+    email: '',
+    password: 'abc123',
+    confirmPassword: 'abc123',
+    role: 'member',
+    status: 'active',
+  });
+  assert.match(app.innerHTML, /chenchen/);
+  assert.match(app.innerHTML, /陈晨/);
+
+  click(listeners, 'open-overview');
+  click(listeners, 'edit-project', { id: 'p-1' });
+  assert.match(app.innerHTML, /陈晨 · 成员/);
+  assert.doesNotMatch(app.innerHTML, /参与团队/);
+});
+
+test('sprint detail shows project name and risk note', () => {
+  const { app, listeners } = createRuntime({ currentUserId: 'u-1', selectedProjectId: 'p-1', selectedSprintId: 's-1' });
+
+  click(listeners, 'open-sprint', { id: 's-1' });
+  assert.match(app.innerHTML, /企业客户项目看板 MVP/);
+  assert.doesNotMatch(app.innerHTML, /Sprint 二级详情/);
+  assert.match(app.innerHTML, /风险：<\/strong>时间轴拖拽暂不进入第一版/);
 });

@@ -1,8 +1,16 @@
 window.PMO_META = {
   "version": "0.6.0",
-  "buildDate": "2026-05-11 20:17",
+  "buildDate": "2026-05-11 22:04",
   "dataSchema": 1,
   "changelog": [
+    {
+      "commit": "3f5476e",
+      "date": "2026-05-11 20:17",
+      "message": "Use secondary info pages and add favicon",
+      "points": [
+        "完成一次系统功能更新"
+      ]
+    },
     {
       "commit": "71b7521",
       "date": "2026-05-11 19:54",
@@ -65,14 +73,6 @@ window.PMO_META = {
       "points": [
         "修复预览窗口登录问题",
         "保留正常账号密码校验逻辑"
-      ]
-    },
-    {
-      "commit": "d63369e",
-      "date": "2026-05-11 17:17",
-      "message": "Fix preview login entry",
-      "points": [
-        "修复预览环境登录入口响应"
       ]
     }
   ]
