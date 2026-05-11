@@ -628,7 +628,7 @@ function renderLoginPage() {
             <input name="password" type="password" placeholder="请输入密码" />
           </div>
           ${state.loginError ? `<p class="login-error">${escapeHtml(state.loginError)}</p>` : ''}
-          <button class="button primary" type="submit">登录</button>
+          <button class="button primary" type="button" data-action="login-submit">登录</button>
         </form>
       </section>
     </main>
@@ -1649,6 +1649,7 @@ function saveUser(form) {
 }
 
 function login(form) {
+  if (!form) return;
   const data = new FormData(form);
   const email = String(data.get('email') || '').trim().toLowerCase();
   const password = String(data.get('password') || '');
@@ -1785,6 +1786,9 @@ app.addEventListener('click', (event) => {
   if (action === 'open-overview') {
     state.view = 'overview';
     render();
+  }
+  if (action === 'login-submit') {
+    login(target.closest('form'));
   }
   if (action === 'new-project') openProjectDrawer('create');
   if (action === 'logout') logout();
