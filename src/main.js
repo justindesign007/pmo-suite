@@ -230,7 +230,11 @@ const apiClient = {
         event,
       },
     ].slice(-100);
-    window.localStorage.setItem(storageKey, JSON.stringify({ ...serializableState, auditLogs }));
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify({ ...serializableState, auditLogs }));
+    } catch {
+      // Embedded previews can block file:// localStorage writes; keep the UI flow usable.
+    }
     return auditLogs;
   },
 };
@@ -628,7 +632,7 @@ function renderLoginPage() {
             <input name="password" type="password" placeholder="请输入密码" />
           </div>
           ${state.loginError ? `<p class="login-error">${escapeHtml(state.loginError)}</p>` : ''}
-          <button class="button primary" type="button" data-action="debug-login" onclick="window.pmoDebugLogin(event)">登录</button>
+          <button class="button primary" type="button" data-action="login-submit" onclick="window.pmoLogin(event)">登录</button>
         </form>
       </section>
     </main>
@@ -1653,23 +1657,13 @@ function login(form) {
   const data = new FormData(form);
   const email = String(data.get('email') || '').trim().toLowerCase();
   const password = String(data.get('password') || '');
-  const user = email || password
-    ? systemUsers().find((item) => item.email?.toLowerCase() === email && item.status === 'active')
-    : systemUsers().find((item) => normalizeRole(item.role) === 'pmo' && item.status === 'active');
-  if ((email || password) && (!email || !password)) {
+  const user = systemUsers().find((item) => item.email?.toLowerCase() === email && item.status === 'active');
+  if (!email || !password) {
     state.loginError = '请输入完整的邮箱和密码';
     render();
     return;
   }
   if (!user || user.password !== password) {
-    if (!email && !password && user) {
-      state.currentUserId = user.id;
-      state.loginError = '';
-      state.view = 'overview';
-      persistState('auth.login');
-      render();
-      return;
-    }
     state.loginError = '邮箱或密码不正确，或账号未启用';
     render();
     return;
@@ -1689,55 +1683,14 @@ function logout() {
   render();
 }
 
-function quickLogin(event) {
+function submitLogin(event) {
   event?.preventDefault?.();
   event?.stopPropagation?.();
   const form = event?.target?.closest?.('form') || app.querySelector('form[data-form="login"]');
-  if (form) {
-    login(form);
-    return;
-  }
-  const user = systemUsers().find((item) => normalizeRole(item.role) === 'pmo' && item.status === 'active') ||
-    systemUsers().find((item) => item.status === 'active');
-  if (!user) {
-    state.loginError = '没有可登录的启用账号';
-    render();
-    return;
-  }
-  state.currentUserId = user.id;
-  state.loginError = '';
-  state.view = 'overview';
-  persistState('auth.login');
-  render();
+  login(form);
 }
 
-window.pmoQuickLogin = quickLogin;
-
-function debugLogin(event) {
-  event?.preventDefault?.();
-  event?.stopPropagation?.();
-  const form = event?.target?.closest?.('form') || app.querySelector('form[data-form="login"]');
-  const data = form ? new FormData(form) : new FormData();
-  const hasCredentials = Boolean(String(data.get('email') || '').trim() || String(data.get('password') || '').trim());
-  if (hasCredentials && form) {
-    login(form);
-    return;
-  }
-  const user = systemUsers().find((item) => normalizeRole(item.role) === 'pmo' && item.status === 'active') ||
-    systemUsers().find((item) => item.status === 'active');
-  if (!user) {
-    state.loginError = '没有可登录的启用账号';
-    render();
-    return;
-  }
-  state.currentUserId = user.id;
-  state.loginError = '';
-  state.view = 'overview';
-  persistState('auth.login');
-  render();
-}
-
-window.pmoDebugLogin = debugLogin;
+window.pmoLogin = submitLogin;
 
 function addRepeat(key) {
   const draft = state.drawer?.draft;
@@ -1838,10 +1791,7 @@ app.addEventListener('click', (event) => {
     render();
   }
   if (action === 'login-submit') {
-    login(target.closest('form'));
-  }
-  if (action === 'debug-login') {
-    debugLogin(event);
+    submitLogin(event);
   }
   if (action === 'new-project') openProjectDrawer('create');
   if (action === 'logout') logout();
