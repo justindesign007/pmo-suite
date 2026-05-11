@@ -613,12 +613,8 @@ function renderLoginPage() {
           <div class="system-logo" aria-hidden="true">
             <span class="logo-mark"><i></i><i></i><i></i></span>
           </div>
-          <div>
-            <p class="eyebrow">PMO Suite</p>
-            <h1>登录项目管理工作台</h1>
-          </div>
+          <h1>PMO Suite</h1>
         </div>
-        <p class="muted">仅成员管理中已启用的用户可以登录。默认演示密码为 <strong>123456</strong>。</p>
         <form data-form="login" class="login-form">
           <div class="field">
             <label>账号邮箱</label>
@@ -629,7 +625,7 @@ function renderLoginPage() {
           </div>
           <div class="field">
             <label>密码</label>
-            <input name="password" type="password" placeholder="默认 123456" required />
+            <input name="password" type="password" placeholder="请输入密码" required />
           </div>
           ${state.loginError ? `<p class="login-error">${escapeHtml(state.loginError)}</p>` : ''}
           <button class="button primary" type="submit">登录</button>
