@@ -36,6 +36,14 @@ npm run start
 http://localhost:8000
 ```
 
+## 默认登录账号
+
+本地 MVP 使用浏览器 `localStorage` 保存数据。默认演示账号如下，初始密码均为 `123456`：
+
+- PMO：`zhangsan@example.com`
+- PM：`lisi@example.com`
+- 成员：`wangwu@example.com`
+
 ## 测试
 
 ```bash
