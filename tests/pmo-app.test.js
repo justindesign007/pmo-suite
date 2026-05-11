@@ -5,7 +5,7 @@ import vm from 'node:vm';
 
 const source = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 
-function createRuntime(savedState = null, { blockStorage = false } = {}) {
+function createRuntime(savedState = null, { blockStorage = false, meta = null } = {}) {
   const listeners = {};
   const store = new Map();
   if (savedState) store.set('pmo-sprint-api-cache-v2', JSON.stringify(savedState));
@@ -51,6 +51,7 @@ function createRuntime(savedState = null, { blockStorage = false } = {}) {
       },
     },
     window: {
+      PMO_META: meta,
       localStorage: {
         getItem(key) {
           return store.get(key) || null;
@@ -365,4 +366,87 @@ test('saved business data survives app metadata and schema updates', () => {
   assert.doesNotMatch(app.innerHTML, /企业客户项目看板 MVP/);
   assert.match(app.innerHTML, /ownerone/);
   assert.equal(storedState(store).projects[0].name, '保留的业务项目');
+});
+
+test('sidebar about and changelog open as popover with Chinese release notes', () => {
+  const meta = {
+    version: '0.7.0',
+    buildDate: '2026-05-11 20:05',
+    dataSchema: 1,
+    changelog: [
+      {
+        commit: 'abc1234',
+        date: '2026-05-11 20:04',
+        message: 'Polish marked UI details',
+        points: ['优化左侧信息浮层', '新增三级编辑页'],
+      },
+    ],
+  };
+  const { app, listeners } = createRuntime({ currentUserId: 'u-1' }, { meta });
+
+  assert.match(app.innerHTML, /data-action="open-info-panel" data-panel="about"/);
+  assert.doesNotMatch(app.innerHTML, /<details class="sidebar-meta"/);
+
+  click(listeners, 'open-info-panel', { panel: 'about' });
+  assert.match(app.innerHTML, /info-popover/);
+  assert.match(app.innerHTML, /产品定位/);
+  assert.match(app.innerHTML, /主要功能|项目与 Sprint 管理/);
+
+  click(listeners, 'close-info-panel');
+  click(listeners, 'open-info-panel', { panel: 'changelog' });
+  assert.match(app.innerHTML, /2026-05-11 20:04/);
+  assert.match(app.innerHTML, /优化左侧信息浮层/);
+  assert.match(app.innerHTML, /新增三级编辑页/);
+});
+
+test('sprint edit actions drill down to scoped tertiary pages', () => {
+  const { app, listeners, store } = createRuntime({ currentUserId: 'u-1', selectedProjectId: 'p-1', selectedSprintId: 's-1' });
+
+  click(listeners, 'open-sprint', { id: 's-1' });
+  click(listeners, 'edit-sprint-section', { id: 's-1', section: 'basic' });
+  assert.match(app.innerHTML, /Sprint 三级编辑/);
+  assert.match(app.innerHTML, /data-form="sprint-edit-basic"/);
+  assert.doesNotMatch(app.innerHTML, /data-form="sprint"/);
+  assert.doesNotMatch(app.innerHTML, /关键需求<\/h3>/);
+
+  submit(listeners, 'sprint-edit-basic', {
+    name: 'Sprint 1 - 基础信息已更新',
+    owner: 'u-2',
+    status: 'active',
+    priority: 'high',
+    startDate: '2026-05-12',
+    endDate: '2026-05-26',
+    description: '仅更新基础信息。',
+    goal: '验证三级编辑页保存基础信息。',
+    acceptanceCriteria: '基础信息可保存。',
+    riskNote: '',
+  });
+  assert.match(app.innerHTML, /Sprint 1 - 基础信息已更新/);
+  assert.equal(storedState(store).sprints.find((sprint) => sprint.id === 's-1').name, 'Sprint 1 - 基础信息已更新');
+
+  click(listeners, 'edit-sprint-section', { id: 's-1', section: 'plan', add: 'milestones' });
+  assert.match(app.innerHTML, /data-form="sprint-edit-plan"/);
+  assert.match(app.innerHTML, /里程碑 3/);
+  assert.doesNotMatch(app.innerHTML, /Sprint 名称/);
+  submit(listeners, 'sprint-edit-plan', {
+    'milestones.2.name': '上线复盘',
+    'milestones.2.date': '2026-05-25',
+    'milestones.2.owner': 'u-2',
+    'milestones.2.status': 'not_started',
+    'milestones.2.deliverable': '复盘纪要',
+    'milestones.2.description': '新增里程碑',
+  });
+  assert.equal(storedState(store).milestones.some((item) => item.name === '上线复盘'), true);
+
+  click(listeners, 'edit-sprint-section', { id: 's-1', section: 'requirements' });
+  assert.match(app.innerHTML, /data-form="sprint-edit-requirements"/);
+  assert.match(app.innerHTML, /WeTask 链接/);
+  assert.doesNotMatch(app.innerHTML, /Sprint 名称/);
+  submit(listeners, 'sprint-edit-requirements', {
+    'requirements.0.wetaskUrl': 'https://wetask.example.com/requirements/REQ-001-updated',
+  });
+  assert.equal(
+    storedState(store).requirements.find((item) => item.id === 'r-1').wetaskUrl,
+    'https://wetask.example.com/requirements/REQ-001-updated',
+  );
 });
