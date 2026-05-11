@@ -672,9 +672,9 @@ function renderLoginPage() {
         <form data-form="login" class="login-form" novalidate>
           <div class="field">
             <label>用户账号</label>
-            <input name="account" type="text" list="login-users" placeholder="例如 zhangsan" autocomplete="username" />
+            <input name="account" type="text" list="login-users" placeholder="请选择或输入用户账号" autocomplete="username" />
             <datalist id="login-users">
-              ${activeUsers.map((user) => `<option value="${escapeHtml(user.account)}">${escapeHtml(user.name)} · ${roleLabels[normalizeRole(user.role)]}</option>`).join('')}
+              ${activeUsers.map((user) => `<option value="${escapeHtml(user.account)}">${escapeHtml(user.account)} · ${escapeHtml(user.name)} · ${roleLabels[normalizeRole(user.role)]}</option>`).join('')}
             </datalist>
           </div>
           <div class="field">
@@ -965,17 +965,17 @@ function renderProjectDashboardCard(project) {
     <article class="project-shell panel">
       <section class="project-panel">
         <div class="project-panel-head">
-        <div class="project-title-block">
-          <div class="rail-mark">${project.name.slice(0, 1)}</div>
-          <div>
-            <p class="eyebrow">Project</p>
-            <div class="project-name-row">
-              <h3>${escapeHtml(project.name)}</h3>
-              ${badge(project.status)}
-              <span class="${delayedCount ? 'danger-text' : 'status-good'}">${delayedCount ? `${delayedCount} 个延期` : '节奏正常'}</span>
+          <div class="project-title-block">
+            <div class="rail-mark">${project.name.slice(0, 1)}</div>
+            <div>
+              <div class="project-name-row">
+                <h3>${escapeHtml(project.name)}</h3>
+                ${badge(project.status)}
+                ${delayedCount ? `<span class="danger-text">${delayedCount} 个延期</span>` : ''}
+              </div>
+              <p class="project-summary">${escapeHtml(project.description || project.goal)}</p>
             </div>
           </div>
-        </div>
           <div class="card-actions">
             ${canManage ? `<button class="button" data-action="edit-project" data-id="${project.id}">编辑项目</button>` : ''}
             ${canManage ? `<button class="button primary" data-action="new-sprint" data-id="${project.id}">+ Sprint</button>` : ''}
@@ -989,13 +989,12 @@ function renderProjectDashboardCard(project) {
             ` : ''}
           </div>
         </div>
-        <p class="project-summary">${escapeHtml(project.description || project.goal)}</p>
         <div class="project-compact-meta">
-          <span>Owner ${escapeHtml(userName(project.owner))}</span>
-          <span>${dateText(project.startDate)} - ${dateText(project.endDate)}</span>
-          <span>${allSprints.length} 个 Sprint</span>
-          <span>${memberCount} 个成员</span>
-          <span>${requirementsCount} 条需求</span>
+          <div><span>Owner</span><strong>${escapeHtml(userName(project.owner))}</strong></div>
+          <div><span>项目周期</span><strong>${dateText(project.startDate)} - ${dateText(project.endDate)}</strong></div>
+          <div><span>Sprint</span><strong>${allSprints.length} 个</strong></div>
+          <div><span>成员</span><strong>${memberCount} 个</strong></div>
+          <div><span>需求</span><strong>${requirementsCount} 条</strong></div>
         </div>
         ${activeSprint ? renderActiveSprint(activeSprint) : renderNoActiveSprint(project)}
         <div class="other-sprints">
@@ -1488,7 +1487,7 @@ function renderProjectForm(project) {
         ${canAssignProjectPm ? selectField('项目状态', 'status', projectStatusOptions(project.status)) : hiddenField('status', project.status)}
         ${field('开始日期', 'startDate', project.startDate, 'date', true)}
         ${field('结束日期', 'endDate', project.endDate, 'date', true)}
-        ${textareaField('项目目标', 'goal', project.goal, true)}
+        ${hiddenField('goal', project.goal || project.description || '项目交付目标')}
         ${textareaField('项目描述', 'description', project.description)}
       </div>
       ${renderRepeatSection('members', '项目成员', project.members || [], renderMemberForm)}
@@ -1849,7 +1848,7 @@ function readForm(form) {
 
 function validateProject(project) {
   if (!project.name.trim()) return '项目名称不能为空';
-  if (!project.goal.trim()) return '项目目标不能为空';
+  project.goal = String(project.goal || project.description || project.name).trim();
   if (!project.members?.length) return '项目至少需要 1 个成员';
   if (!userRecord(project.owner) || !['pmo', 'pm'].includes(userRole(project.owner))) return '项目 PM 必须是 PMO 或 PM 角色';
   const invalidMember = project.members.find((id) => !userRecord(id) || userRecord(id).status !== 'active');

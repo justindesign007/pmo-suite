@@ -1,8 +1,16 @@
 window.PMO_META = {
   "version": "0.6.0",
-  "buildDate": "2026-05-11 22:04",
+  "buildDate": "2026-05-11 22:19",
   "dataSchema": 1,
   "changelog": [
+    {
+      "commit": "c45defc",
+      "date": "2026-05-11 22:04",
+      "message": "Refine forms and synchronized member data",
+      "points": [
+        "完成一次系统功能更新"
+      ]
+    },
     {
       "commit": "3f5476e",
       "date": "2026-05-11 20:17",
@@ -64,15 +72,6 @@ window.PMO_META = {
       "points": [
         "优化侧边栏账号与退出操作",
         "完善 PMO、PM、成员权限展示"
-      ]
-    },
-    {
-      "commit": "752ea35",
-      "date": "2026-05-11 17:30",
-      "message": "Fix preview login without bypassing auth",
-      "points": [
-        "修复预览窗口登录问题",
-        "保留正常账号密码校验逻辑"
       ]
     }
   ]

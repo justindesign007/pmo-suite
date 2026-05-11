@@ -129,6 +129,19 @@ test('strict account login works when preview storage writes are blocked', () =>
   assert.match(app.innerHTML, /system-sidebar/);
 });
 
+test('login account suggestions come from current user accounts', () => {
+  const savedState = {
+    users: [
+      { id: 'u-x', name: '新成员', account: 'newmember', password: 'pw', role: 'member', status: 'active' },
+    ],
+  };
+  const { app } = createRuntime(savedState);
+
+  assert.match(app.innerHTML, /value="newmember"/);
+  assert.match(app.innerHTML, /newmember · 新成员 · 成员/);
+  assert.doesNotMatch(app.innerHTML, /例如 zhangsan/);
+});
+
 test('role permissions render as PMO full access, PM project operations, member read-only', () => {
   const pmo = createRuntime({ currentUserId: 'u-1' }).app.innerHTML;
   assert.match(pmo, /data-action="new-project"/);
@@ -476,6 +489,7 @@ test('user management changes are immediately available in project member select
   click(listeners, 'edit-project', { id: 'p-1' });
   assert.match(app.innerHTML, /陈晨 · 成员/);
   assert.doesNotMatch(app.innerHTML, /参与团队/);
+  assert.doesNotMatch(app.innerHTML, /项目目标/);
 });
 
 test('sprint detail shows project name and risk note', () => {
@@ -485,4 +499,14 @@ test('sprint detail shows project name and risk note', () => {
   assert.match(app.innerHTML, /企业客户项目看板 MVP/);
   assert.doesNotMatch(app.innerHTML, /Sprint 二级详情/);
   assert.match(app.innerHTML, /风险：<\/strong>时间轴拖拽暂不进入第一版/);
+});
+
+test('project cards remove rhythm labels and use aligned metadata blocks', () => {
+  const { app } = createRuntime({ currentUserId: 'u-1' });
+
+  assert.doesNotMatch(app.innerHTML, /节奏正常/);
+  assert.doesNotMatch(app.innerHTML, />Project<\/p>/);
+  assert.match(app.innerHTML, /class="project-compact-meta"/);
+  assert.match(app.innerHTML, /<span>Owner<\/span><strong>李四<\/strong>/);
+  assert.match(app.innerHTML, /<span>项目周期<\/span>/);
 });

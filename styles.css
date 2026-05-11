@@ -883,8 +883,9 @@ h1 {
 
 .project-title-block {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
 }
 
 .project-title-block h3 {
@@ -908,17 +909,37 @@ h1 {
 }
 
 .project-summary {
+  margin-top: 8px;
   color: var(--muted);
   line-height: 1.6;
 }
 
-.status-good {
-  border-radius: 999px;
-  padding: 5px 9px;
-  color: var(--success);
-  background: var(--success-soft);
+.project-compact-meta {
+  display: grid;
+  grid-template-columns: 1.1fr 1.2fr repeat(3, minmax(92px, 0.6fr));
+  gap: 10px;
+}
+
+.project-compact-meta div {
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: var(--surface-soft);
+}
+
+.project-compact-meta span,
+.project-compact-meta strong {
+  display: block;
+}
+
+.project-compact-meta span {
+  color: var(--subtle);
   font-size: 12px;
-  font-weight: 700;
+}
+
+.project-compact-meta strong {
+  margin-top: 4px;
+  color: var(--text);
+  font-size: 13px;
 }
 
 .advanced-menu {
@@ -1911,6 +1932,7 @@ h1 {
   .summary-grid,
   .overview-sprint-list,
   .active-sprint-metrics,
+  .project-compact-meta,
   .user-field-grid,
   .form-grid {
     grid-template-columns: 1fr;
