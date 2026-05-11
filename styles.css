@@ -811,8 +811,8 @@ h1 {
   color: #fff;
   font-size: 20px;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  box-shadow: 0 14px 30px rgba(217, 180, 44, 0.2);
+  background: var(--accent);
+  box-shadow: 0 14px 30px rgba(31, 91, 77, 0.18);
 }
 
 .project-rail-brand h3 {

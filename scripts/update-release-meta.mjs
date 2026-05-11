@@ -1,50 +1,68 @@
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 
-const log = execFileSync('git', ['log', '-8', '--date=format-local:%Y-%m-%d %H:%M', '--pretty=format:%h%x09%ad%x09%s'], {
+const log = execFileSync('git', ['log', '--date=format-local:%Y-%m-%d %H:%M', '--pretty=format:%h%x09%ad%x09%s'], {
   encoding: 'utf8',
 });
 
 const zhSummary = {
+  'Harden preview login and release changelog': ['增强右侧预览登录自愈能力，修复残留错误用户数据导致的登录失败', '项目卡片图标背景改为纯色，统一视觉风格', '更新日志改为全量记录、逐次递增版本号和具体中文更新点', '左侧菜单更新日志入口改为显示最近更新时间'],
+  'Migrate legacy preview login users': ['修复右侧预览残留旧用户数据导致默认账号无法登录的问题', '新增内置账号认证数据迁移，保留项目、Sprint、需求等业务数据', '补充旧预览数据迁移与密码保护测试'],
+  'Fix preview login and table permissions': ['将登录页改为标准表单提交，提升右侧预览登录稳定性', '成员管理表格增加无权限禁用态', '优化关于我们与二级、三级页面底部间距'],
+  'Add sprint creation wizard and user table': ['新建 Sprint 改为二级下钻页面', '新增基础信息、计划与里程碑、关键需求三步创建向导', '成员管理列表改为表格呈现'],
+  'Polish project cards and login account sync': ['优化首页项目卡片布局，提升 Owner、周期、Sprint 等信息可读性', '移除项目节奏冗余标签和 Project 字段', '登录账号输入与系统用户账号保持同步'],
+  'Refine forms and synchronized member data': ['项目成员选择与成员管理数据即时联动', '用户表单新增姓名与账号字段规范', 'Sprint 详情页补充风险说明展示'],
+  'Use secondary info pages and add favicon': ['关于我们和更新日志改为二级页面呈现', '新增浏览器页签 favicon', '产品定位更新为多 Agent 协同的 AI Native 项目管理系统'],
+  'Add info popovers and scoped sprint edit pages': ['新增关于我们、版本信息和更新日志入口', 'Sprint 编辑改为按基础信息、计划、需求分区下钻', '更新日志改为中文更新点展示'],
   'Polish marked UI details': ['优化登录页、侧边栏和按钮视觉细节', '精简 Sprint 详情页重复信息', '强化 WeTask 链接展示'],
   'Refine user management and release metadata': ['优化系统级用户管理表单', '新增版本信息与更新日志元数据', '保护业务数据避免被系统更新覆盖'],
   'Add functional coverage for sprint detail flow': ['补充 Sprint 详情页功能用例', '验证项目与 Sprint 关联切换'],
   'Use account login and fixed sidebar layout': ['切换为用户账号登录', '固定左侧系统菜单高度与滚动结构'],
   'Refine sidebar account actions and permissions': ['优化侧边栏账号与退出操作', '完善 PMO、PM、成员权限展示'],
   'Fix preview login without bypassing auth': ['修复预览窗口登录问题', '保留正常账号密码校验逻辑'],
-  'Fix preview login entry': ['修复预览环境登录入口响应'],
+  'Fix preview login entry': ['修复预览环境登录入口响应', '保持账号密码校验流程不绕过'],
   'Add direct login click fallback': ['新增登录按钮直接点击兜底逻辑', '提升内嵌预览环境登录稳定性'],
   'Handle login via explicit click action': ['补充显式登录点击事件处理'],
   'Allow debug login from empty login form': ['增加早期调试登录能力'],
   'Refine login page presentation': ['优化登录页视觉呈现'],
   'Add login and role-based permissions': ['新增登录模块', '增加基于角色的权限控制'],
+  'Initial open source PMO Suite MVP': ['初始化 PMO Suite 单页 MVP', '实现项目、Sprint、成员、需求和里程碑基础管理', '建立本地可部署的开源项目结构'],
 };
 
-const entries = log
+function fallbackPoints(message) {
+  return [
+    `根据提交「${message}」更新对应产品能力`,
+    '同步完善界面交互、数据处理或权限控制细节',
+    '更新版本元数据，确保更新日志连续可追溯',
+  ];
+}
+
+function versionAt(total, index) {
+  return `0.6.${total - index}`;
+}
+
+const rawEntries = log
   .trim()
   .split('\n')
   .filter(Boolean)
-  .map((line) => {
+  .map((line, index, rows) => {
     const [commit, date, ...messageParts] = line.split('\t');
     const message = messageParts.join('\t');
-    return { commit, date, message, points: zhSummary[message] || ['完成一次系统功能更新'] };
+    return {
+      version: versionAt(rows.length, index),
+      commit,
+      date,
+      message,
+      points: zhSummary[message] || fallbackPoints(message),
+    };
   });
 
-const lastTag = (() => {
-  try {
-    return execFileSync('git', ['describe', '--tags', '--abbrev=0'], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-  } catch {
-    return '0.6.0';
-  }
-})();
+const entries = rawEntries.length ? rawEntries : [];
 
 const now = new Date();
 const buildDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 const content = `window.PMO_META = ${JSON.stringify({
-  version: lastTag.replace(/^v/, ''),
+  version: entries[0]?.version || '0.6.0',
   buildDate,
   dataSchema: 1,
   changelog: entries,

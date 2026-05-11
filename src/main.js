@@ -358,6 +358,12 @@ function dateText(value) {
   return value.slice(5).replace('-', '/');
 }
 
+function compactUpdateTime(value = '') {
+  const match = String(value).match(/^\d{4}-(\d{2})-(\d{2})\s+(\d{2}:\d{2})/);
+  if (!match) return value || '-';
+  return `${match[1]}/${match[2]} ${match[3]}`;
+}
+
 function badge(status) {
   return `<span class="badge ${statusTone[status] || ''}">${statusLabels[status] || status || '-'}</span>`;
 }
@@ -727,7 +733,7 @@ function renderSystemSidebar() {
   const activeProjects = state.projects.filter((project) => project.status === 'active').length;
   const user = currentUser();
   const userInitial = user?.name?.slice(0, 1) || 'U';
-  const changelog = appMeta.changelog?.slice(0, 4) || [];
+  const latestUpdateTime = compactUpdateTime(appMeta.changelog?.[0]?.date || appMeta.buildDate);
   return `
     <aside class="system-sidebar">
       <div class="system-brand">
@@ -760,7 +766,7 @@ function renderSystemSidebar() {
           <span>关于我们</span><strong>v${escapeHtml(appMeta.version)}</strong>
         </button>
         <button class="sidebar-meta-trigger ${state.view === 'changelog' ? 'active' : ''}" data-action="open-info-page" data-view="changelog">
-          <span>更新日志</span><strong>${changelog.length} 条</strong>
+          <span>更新日志</span><strong>${escapeHtml(latestUpdateTime)}</strong>
         </button>
       </div>
     </aside>
@@ -840,7 +846,7 @@ function renderChangelogPage() {
             <article class="changelog-item">
               <time>${escapeHtml(item.date || '-')}</time>
               <div>
-                <strong>版本 ${escapeHtml(appMeta.version)} · ${escapeHtml(item.commit || '')}</strong>
+                <strong>版本 ${escapeHtml(item.version || appMeta.version)} · ${escapeHtml(item.date || '-')}</strong>
                 <ul>
                   ${(item.points?.length ? item.points : [item.message || '系统更新']).map((point) => `<li>${escapeHtml(point)}</li>`).join('')}
                 </ul>
@@ -2222,6 +2228,7 @@ function saveUser(form) {
     user.status = existing?.status || 'active';
   }
   user.status = 'active';
+  user.authManaged = true;
   const error = validateUser(user);
   if (error) {
     showToast(error);
@@ -2241,12 +2248,12 @@ function login(form) {
   const data = new FormData(form);
   const account = String(data.get('account') || '').trim().toLowerCase();
   const password = String(data.get('password') || '');
-  const user = systemUsers().find((item) => item.account?.toLowerCase() === account && item.status === 'active');
   if (!account || !password) {
     state.loginError = '请输入完整的用户账号和密码';
     render();
     return;
   }
+  const user = resolveLoginUser(account, password);
   if (!user || user.password !== password) {
     state.loginError = '用户账号或密码不正确，或账号未启用';
     render();
@@ -2257,6 +2264,22 @@ function login(form) {
   state.view = 'overview';
   persistState('auth.login');
   render();
+}
+
+function resolveLoginUser(account, password) {
+  const exact = systemUsers().find((item) => item.account?.toLowerCase() === account && item.status === 'active');
+  if (exact?.password === password) return exact;
+
+  const seed = defaultState.users.find((item) => item.account === account && item.password === password && item.status === 'active');
+  if (!seed) return exact;
+
+  const index = state.users.findIndex((item) => item.id === seed.id);
+  if (state.users[index]?.authManaged) return exact;
+  const repaired = { ...(index >= 0 ? state.users[index] : {}), ...structuredClone(seed) };
+  if (index >= 0) state.users[index] = repaired;
+  else state.users.unshift(repaired);
+  state.authSeedVersion = authSeedVersion;
+  return repaired;
 }
 
 function logout() {

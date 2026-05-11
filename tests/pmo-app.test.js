@@ -147,11 +147,29 @@ test('legacy preview user data is migrated without clearing business data', () =
   assert.equal(saved.projects.some((project) => project.id === 'p-custom'), true);
 });
 
+test('corrupted seeded preview credentials self-heal during login', () => {
+  const { app, listeners, store } = createRuntime({
+    authSeedVersion: 1,
+    users: [
+      { id: 'u-1', name: '张三', account: 'old-admin', password: 'wrong', role: 'member', status: 'paused' },
+    ],
+    projects: [{ id: 'p-preview', name: '预览保留项目', owner: 'u-1', members: ['u-1'], status: 'active', startDate: '2026-05-01', endDate: '2026-05-30' }],
+  });
+
+  submit(listeners, 'login', { account: 'zhangsan', password: '123456' });
+
+  assert.doesNotMatch(app.innerHTML, /login-page/);
+  const saved = storedState(store);
+  assert.equal(saved.users.find((user) => user.id === 'u-1').account, 'zhangsan');
+  assert.equal(saved.users.find((user) => user.id === 'u-1').status, 'active');
+  assert.equal(saved.projects.some((project) => project.id === 'p-preview'), true);
+});
+
 test('current user credentials are not reset after auth seed migration has run', () => {
   const { app, listeners } = createRuntime({
     authSeedVersion: 1,
     users: [
-      { id: 'u-1', name: '张三', account: 'zhangsan', password: 'custompass', role: 'pmo', status: 'active' },
+      { id: 'u-1', name: '张三', account: 'zhangsan', password: 'custompass', role: 'pmo', status: 'active', authManaged: true },
     ],
   });
 
@@ -419,6 +437,7 @@ test('sidebar about and changelog open as secondary pages with Chinese release n
     dataSchema: 1,
     changelog: [
       {
+        version: '0.7.1',
         commit: 'abc1234',
         date: '2026-05-11 20:04',
         message: 'Polish marked UI details',
@@ -429,6 +448,8 @@ test('sidebar about and changelog open as secondary pages with Chinese release n
   const { app, listeners } = createRuntime({ currentUserId: 'u-1' }, { meta });
 
   assert.match(app.innerHTML, /data-action="open-info-page" data-view="about"/);
+  assert.match(app.innerHTML, /更新日志<\/span><strong>05\/11 20:04<\/strong>/);
+  assert.doesNotMatch(app.innerHTML, /更新日志<\/span><strong>1 条<\/strong>/);
   assert.doesNotMatch(app.innerHTML, /<details class="sidebar-meta"/);
 
   click(listeners, 'open-info-page', { view: 'about' });
@@ -440,7 +461,8 @@ test('sidebar about and changelog open as secondary pages with Chinese release n
 
   click(listeners, 'open-info-page', { view: 'changelog' });
   assert.match(app.innerHTML, /PMO \/ Changelog/);
-  assert.match(app.innerHTML, /版本 0.7.0/);
+  assert.match(app.innerHTML, /当前版本 0.7.0/);
+  assert.match(app.innerHTML, /版本 0.7.1 · 2026-05-11 20:04/);
   assert.match(app.innerHTML, /2026-05-11 20:04/);
   assert.match(app.innerHTML, /优化左侧信息浮层/);
   assert.match(app.innerHTML, /新增三级编辑页/);
