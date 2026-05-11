@@ -1,8 +1,16 @@
 window.PMO_META = {
   "version": "0.6.0",
-  "buildDate": "2026-05-11 22:56",
+  "buildDate": "2026-05-11 23:01",
   "dataSchema": 1,
   "changelog": [
+    {
+      "commit": "f279f32",
+      "date": "2026-05-11 22:56",
+      "message": "Fix preview login and table permissions",
+      "points": [
+        "完成一次系统功能更新"
+      ]
+    },
     {
       "commit": "8b84f6a",
       "date": "2026-05-11 22:39",
@@ -61,15 +69,6 @@ window.PMO_META = {
         "优化系统级用户管理表单",
         "新增版本信息与更新日志元数据",
         "保护业务数据避免被系统更新覆盖"
-      ]
-    },
-    {
-      "commit": "bf33bee",
-      "date": "2026-05-11 19:01",
-      "message": "Add functional coverage for sprint detail flow",
-      "points": [
-        "补充 Sprint 详情页功能用例",
-        "验证项目与 Sprint 关联切换"
       ]
     }
   ]

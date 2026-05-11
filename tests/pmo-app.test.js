@@ -129,6 +129,38 @@ test('login uses a plain account input without dropdown suggestions', () => {
   assert.doesNotMatch(app.innerHTML, /例如 zhangsan/);
 });
 
+test('legacy preview user data is migrated without clearing business data', () => {
+  const { app, listeners, store } = createRuntime({
+    users: [
+      { id: 'u-1', name: '张三', account: 'old-admin', password: 'wrong', role: 'member', status: 'paused' },
+      { id: 'u-custom', name: '业务用户', account: 'businessuser', password: 'pw', role: 'member', status: 'active' },
+    ],
+    projects: [{ id: 'p-custom', name: '保留项目', owner: 'u-1', members: ['u-1'], status: 'active', startDate: '2026-05-01', endDate: '2026-05-30' }],
+  });
+
+  submit(listeners, 'login', { account: 'zhangsan', password: '123456' });
+
+  assert.doesNotMatch(app.innerHTML, /login-page/);
+  const saved = storedState(store);
+  assert.equal(saved.authSeedVersion, 1);
+  assert.equal(saved.users.some((user) => user.account === 'businessuser'), true);
+  assert.equal(saved.projects.some((project) => project.id === 'p-custom'), true);
+});
+
+test('current user credentials are not reset after auth seed migration has run', () => {
+  const { app, listeners } = createRuntime({
+    authSeedVersion: 1,
+    users: [
+      { id: 'u-1', name: '张三', account: 'zhangsan', password: 'custompass', role: 'pmo', status: 'active' },
+    ],
+  });
+
+  submit(listeners, 'login', { account: 'zhangsan', password: '123456' });
+  assert.match(app.innerHTML, /用户账号或密码不正确，或账号未启用/);
+  submit(listeners, 'login', { account: 'zhangsan', password: 'custompass' });
+  assert.doesNotMatch(app.innerHTML, /login-page/);
+});
+
 test('role permissions render as PMO full access, PM project operations, member read-only', () => {
   const pmo = createRuntime({ currentUserId: 'u-1' }).app.innerHTML;
   assert.match(pmo, /data-action="new-project"/);

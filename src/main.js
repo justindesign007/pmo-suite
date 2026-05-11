@@ -26,6 +26,7 @@ const appMeta = window.PMO_META || {
   dataSchema: 1,
   changelog: [],
 };
+const authSeedVersion = 1;
 
 const statusLabels = {
   planning: '规划中',
@@ -55,6 +56,7 @@ const statusTone = {
 
 const defaultState = {
   schemaVersion: appMeta.dataSchema,
+  authSeedVersion,
   view: 'overview',
   selectedProjectId: 'p-1',
   selectedSprintId: 's-1',
@@ -270,15 +272,43 @@ function migrateBusinessState(saved) {
   // Keep business data under a stable storage key; app version changes must not reset user data.
   const base = structuredClone(defaultState);
   if (!saved) return base;
-  return {
+  const migrated = {
     ...base,
     ...saved,
     schemaVersion: appMeta.dataSchema,
+    authSeedVersion: saved.authSeedVersion || 0,
     drawer: null,
     edit: null,
     toast: '',
     loginError: '',
   };
+  if ((saved.authSeedVersion || 0) < authSeedVersion) {
+    migrated.users = migrateSeedUsers(saved.users || []);
+    migrated.authSeedVersion = authSeedVersion;
+  }
+  return migrated;
+}
+
+function migrateSeedUsers(savedUsers = []) {
+  const seedUsers = new Map(defaultState.users.map((user) => [user.id, user]));
+  const seen = new Set();
+  const users = savedUsers.map((user) => {
+    const seed = seedUsers.get(user.id);
+    if (!seed) return user;
+    seen.add(user.id);
+    return {
+      ...user,
+      name: seed.name,
+      account: seed.account,
+      password: seed.password,
+      role: seed.role,
+      status: seed.status,
+    };
+  });
+  defaultState.users.forEach((seed) => {
+    if (!seen.has(seed.id)) users.unshift(structuredClone(seed));
+  });
+  return users;
 }
 
 function uid(prefix) {
