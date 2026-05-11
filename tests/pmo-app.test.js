@@ -15,6 +15,7 @@ const source = [
 function createRuntime(savedState = null, { blockStorage = false, meta = null, initialHash = '' } = {}) {
   const listeners = {};
   const store = new Map();
+  const downloads = [];
   if (savedState) store.set('pmo-sprint-api-cache-v2', JSON.stringify(savedState));
 
   const app = {
@@ -45,7 +46,12 @@ function createRuntime(savedState = null, { blockStorage = false, meta = null, i
     console,
     structuredClone,
     FormData: FakeFormData,
-    Blob: class {},
+    Blob: class {
+      constructor(parts, options = {}) {
+        this.parts = parts;
+        this.type = options.type;
+      }
+    },
     URL: {
       createObjectURL() {
         return 'blob:test';
@@ -55,6 +61,16 @@ function createRuntime(savedState = null, { blockStorage = false, meta = null, i
     document: {
       querySelector(selector) {
         return selector === '#app' ? app : null;
+      },
+      createElement(tag) {
+        return {
+          tag,
+          href: '',
+          download: '',
+          click() {
+            downloads.push({ href: this.href, download: this.download });
+          },
+        };
       },
     },
     window: {
@@ -83,7 +99,7 @@ function createRuntime(savedState = null, { blockStorage = false, meta = null, i
   context.globalThis = context;
   vm.createContext(context);
   vm.runInContext(source, context);
-  return { app, context, listeners, store };
+  return { app, context, listeners, store, downloads };
 }
 
 function click(listeners, action, dataset = {}) {
@@ -94,6 +110,17 @@ function click(listeners, action, dataset = {}) {
     },
   };
   listeners.click({ target });
+}
+
+async function changeFile(listeners, id, file) {
+  await listeners.change({
+    target: {
+      id,
+      files: [file],
+      value: 'backup.json',
+      dataset: {},
+    },
+  });
 }
 
 function submit(listeners, formName, fields) {
@@ -410,8 +437,8 @@ test('user drawer uses account-only fields and validates password confirmation',
   assert.match(app.innerHTML, /newmember/);
 });
 
-test('PMO can create and restore local data backups without clearing custom users', () => {
-  const { app, listeners, store } = createRuntime({ currentUserId: 'u-1' });
+test('PMO can create, export, import, and restore data backups without clearing custom users', async () => {
+  const { app, listeners, store, downloads } = createRuntime({ currentUserId: 'u-1' });
 
   click(listeners, 'open-users');
   click(listeners, 'new-user');
@@ -427,11 +454,17 @@ test('PMO can create and restore local data backups without clearing custom user
   click(listeners, 'open-data-backup');
   assert.match(app.innerHTML, /数据备份/);
   assert.match(app.innerHTML, /data-action="create-backup"/);
+  assert.match(app.innerHTML, /data-action="export-backup"/);
+  assert.match(app.innerHTML, /data-action="import-backup"/);
   click(listeners, 'create-backup');
 
   const backups = JSON.parse(store.get('pmo-sprint-api-backups-v1'));
   assert.equal(backups.length, 1);
   assert.equal(backups[0].summary.users, 5);
+  assert.equal(backups[0].format, 'pmo-suite-backup');
+
+  click(listeners, 'export-backup', { id: backups[0].id });
+  assert.equal(downloads.at(-1).download.startsWith('pmo-suite-backup-'), true);
 
   click(listeners, 'delete-user', { id: 'u-backup' });
   assert.equal(storedState(store).users.some((user) => user.id === 'u-backup'), false);
@@ -439,6 +472,16 @@ test('PMO can create and restore local data backups without clearing custom user
   click(listeners, 'restore-backup', { id: backups[0].id });
   assert.equal(storedState(store).users.some((user) => user.id === 'u-backup'), true);
   assert.match(app.innerHTML, /数据已从备份恢复/);
+
+  click(listeners, 'delete-user', { id: 'u-backup' });
+  assert.equal(storedState(store).users.some((user) => user.id === 'u-backup'), false);
+  await changeFile(listeners, 'backup-file', {
+    name: 'pmo-suite-backup.json',
+    async text() {
+      return JSON.stringify(backups[0]);
+    },
+  });
+  assert.equal(storedState(store).users.some((user) => user.id === 'u-backup'), true);
 });
 
 test('page route hash restores first-level pages on refresh', () => {
@@ -603,7 +646,7 @@ test('sprint detail shows project name and risk note', () => {
   const { app, listeners } = createRuntime({ currentUserId: 'u-1', selectedProjectId: 'p-1', selectedSprintId: 's-1' });
 
   click(listeners, 'open-sprint', { id: 's-1' });
-  assert.match(app.innerHTML, /企业客户项目看板 MVP/);
+  assert.match(app.innerHTML, /企业客户项目看板/);
   assert.doesNotMatch(app.innerHTML, /Sprint 二级详情/);
   assert.match(app.innerHTML, /风险：<\/strong>时间轴拖拽暂不进入第一版/);
 });

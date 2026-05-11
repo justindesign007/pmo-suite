@@ -1104,13 +1104,39 @@ h1 {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0 8px;
+  table-layout: fixed;
 }
 
 .user-table th {
-  padding: 0 14px 4px;
+  padding: 0 18px 4px;
   color: var(--subtle);
   font-size: 12px;
   text-align: left;
+}
+
+.user-table th:nth-child(1),
+.user-table td:nth-child(1) {
+  width: 26%;
+}
+
+.user-table th:nth-child(2),
+.user-table td:nth-child(2) {
+  width: 22%;
+}
+
+.user-table th:nth-child(3),
+.user-table td:nth-child(3) {
+  width: 17%;
+}
+
+.user-table th:nth-child(4),
+.user-table td:nth-child(4) {
+  width: 15%;
+}
+
+.user-table th:nth-child(5),
+.user-table td:nth-child(5) {
+  width: 20%;
 }
 
 .user-table th:last-child,
@@ -1119,7 +1145,7 @@ h1 {
 }
 
 .user-table td {
-  padding: 14px;
+  padding: 14px 18px;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   background: #fff;
@@ -1188,6 +1214,10 @@ h1 {
   gap: 12px;
   align-items: center;
   background: #fff;
+}
+
+.backup-row-actions {
+  flex-wrap: nowrap;
 }
 
 .panel {

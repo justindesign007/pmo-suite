@@ -1,8 +1,18 @@
 window.PMO_META = {
-  "version": "0.6.23",
-  "buildDate": "2026-05-11 23:43",
+  "version": "0.6.24",
+  "buildDate": "2026-05-12 00:00",
   "dataSchema": 1,
   "changelog": [
+    {
+      "version": "0.6.24",
+      "date": "2026-05-12 00:00",
+      "message": "Expand backup portability and product positioning",
+      "points": [
+        "备份范围覆盖核心业务数据、审计日志和可选体验状态",
+        "新增 PMO 备份文件导出和导入恢复能力，降低本地或服务端存储异常造成的数据丢失风险",
+        "移除产品 MVP 定位表述，并优化成员管理表格列宽与间距"
+      ]
+    },
     {
       "version": "0.6.23",
       "date": "2026-05-11 23:43",

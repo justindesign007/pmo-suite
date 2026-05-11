@@ -6,6 +6,7 @@ const log = execFileSync('git', ['log', '--date=format-local:%Y-%m-%d %H:%M', '-
 });
 
 const zhSummary = {
+  'Expand backup portability and product positioning': ['备份范围覆盖核心业务数据、审计日志和可选体验状态', '新增 PMO 备份文件导出和导入恢复能力，降低本地或服务端存储异常造成的数据丢失风险', '移除产品 MVP 定位表述，并优化成员管理表格列宽与间距'],
   'Split pages and backup navigation': ['将首页、二级页面、三级页面、用户管理和数据备份拆分为语义化页面文件', '数据备份升级为 PMO 独立一级菜单，成员管理仅保留用户管理职责', '新增 URL hash 页面同步，刷新后可保持当前页面位置'],
   'Add non-destructive backups and recovery': ['新增 PMO 手动数据备份与恢复能力，支持用户数据丢失后从本地快照恢复', '修正内置账号恢复策略，避免覆盖已有用户记录和自定义成员信息', '优化项目图标主色搭配、Sprint 按钮样式和成员表格操作列对齐'],
   'Harden preview login and release changelog': ['增强右侧预览登录自愈能力，修复残留错误用户数据导致的登录失败', '项目卡片图标背景改为纯色，统一视觉风格', '更新日志改为全量记录、逐次递增版本号和具体中文更新点', '左侧菜单更新日志入口改为显示最近更新时间'],

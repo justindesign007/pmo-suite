@@ -18,6 +18,8 @@
               </div>
               <div class="card-actions">
                 <button class="button" data-action="create-backup">手动备份</button>
+                <button class="button" data-action="export-backup" data-id="${ctx.escapeHtml(latestBackup?.id || '')}">导出备份</button>
+                <button class="button" data-action="import-backup">导入备份恢复</button>
                 <button class="button" data-action="restore-backup" data-id="${ctx.escapeHtml(latestBackup?.id || '')}" ${latestBackup ? '' : 'disabled'}>恢复最近备份</button>
               </div>
             </div>
@@ -35,7 +37,10 @@
                       <strong>${ctx.escapeHtml(ctx.formatDateTime(backup.createdAt))}</strong>
                       <span>${backup.summary?.users || 0} 用户 · ${backup.summary?.projects || 0} 项目 · ${backup.summary?.sprints || 0} Sprint · ${backup.summary?.requirements || 0} 需求</span>
                     </div>
-                    <button class="link-button" data-action="restore-backup" data-id="${ctx.escapeHtml(backup.id)}">恢复</button>
+                    <div class="card-actions backup-row-actions">
+                      <button class="link-button" data-action="export-backup" data-id="${ctx.escapeHtml(backup.id)}">导出</button>
+                      <button class="link-button" data-action="restore-backup" data-id="${ctx.escapeHtml(backup.id)}">恢复</button>
+                    </div>
                   </div>
                 `).join('')}
               </div>

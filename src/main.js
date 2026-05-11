@@ -80,7 +80,7 @@ const defaultState = {
   projects: [
     {
       id: 'p-1',
-      name: '企业客户项目看板 MVP',
+      name: '企业客户项目看板',
       description: '项目、Sprint、成员和需求责任人管理。',
       owner: 'u-2',
       members: ['u-1', 'u-2', 'u-3'],
@@ -120,7 +120,7 @@ const defaultState = {
       startDate: '2026-05-12',
       endDate: '2026-05-26',
       businessGoal: '项目 Owner 可以独立完成项目计划录入。',
-      deliveryGoal: '交付单页 MVP 原型。',
+      deliveryGoal: '交付项目管理工作台。',
       qualityGoal: '核心字段完整，时间规则可校验。',
       acceptanceCriteria: '可以创建项目、创建 Sprint，并配置需求、里程碑和时间轴节点。',
       teams: ['产品', '研发', '测试'],
@@ -143,7 +143,7 @@ const defaultState = {
     {
       id: 'm-2',
       sprintId: 's-1',
-      name: 'MVP 原型确认',
+      name: '工作台原型确认',
       date: '2026-05-21',
       owner: 'u-2',
       status: 'active',
@@ -213,7 +213,7 @@ const defaultState = {
       type: 'review',
       date: '2026-05-21',
       owner: 'u-2',
-      description: '项目 Owner 确认 MVP。',
+      description: '项目 Owner 确认工作台体验。',
       isCritical: true,
       status: 'not_started',
       requirementIds: ['r-2'],
@@ -521,26 +521,38 @@ function backupSummary(snapshot) {
   };
 }
 
-function dataBackups() {
-  return apiClient.loadBackups();
-}
-
-function createDataBackup() {
-  if (!requirePermission(isPmo(), '只有 PMO 可以备份系统数据')) return;
-  const snapshot = businessSnapshot();
-  const backup = {
+function createBackupRecord(snapshot = businessSnapshot()) {
+  return {
+    format: 'pmo-suite-backup',
+    version: 1,
     id: uid('backup'),
     createdAt: new Date().toISOString(),
     createdBy: state.currentUserId,
     summary: backupSummary(snapshot),
     state: snapshot,
   };
+}
+
+function dataBackups() {
+  return apiClient.loadBackups();
+}
+
+function createDataBackup() {
+  if (!requirePermission(isPmo(), '只有 PMO 可以备份系统数据')) return;
+  const backup = createBackupRecord();
   const backups = [backup, ...dataBackups()].slice(0, 10);
   if (!apiClient.saveBackups(backups)) {
     showToast('备份失败：当前环境无法写入本地备份');
     return;
   }
   showToast('数据备份已创建');
+}
+
+function exportDataBackup(id = '') {
+  if (!requirePermission(isPmo(), '只有 PMO 可以导出备份数据')) return;
+  const backup = dataBackups().find((item) => item.id === id) || dataBackups()[0] || createBackupRecord();
+  downloadText(JSON.stringify(backup, null, 2), `pmo-suite-backup-${formatDateTime(backup.createdAt).replace(/[:\s]/g, '-')}.json`, 'application/json');
+  showToast('备份文件已导出');
 }
 
 function restoreDataBackup(id) {
@@ -551,20 +563,35 @@ function restoreDataBackup(id) {
     return;
   }
   if (!window.confirm(`确认恢复 ${formatDateTime(backup.createdAt)} 的数据备份？当前数据会被备份内容替换。`)) return;
+  restoreBackupState(backup.state, 'data.restored');
+}
+
+function restoreBackupState(snapshot, event = 'data.restored') {
   const activeUserId = state.currentUserId;
-  const restored = migrateBusinessState(backup.state);
+  const restored = migrateBusinessState(snapshot);
   Object.keys(state).forEach((key) => delete state[key]);
   Object.assign(state, restored, {
     currentUserId: restored.users?.some((user) => user.id === activeUserId && user.status === 'active') ? activeUserId : restored.currentUserId,
-    view: 'users',
+    view: 'dataBackup',
     drawer: null,
     edit: null,
     toast: '',
     loginError: '',
   });
   normalizeState();
-  persistState('data.restored');
+  persistState(event);
   showToast('数据已从备份恢复');
+}
+
+async function importBackupFile(file) {
+  if (!requirePermission(isPmo(), '只有 PMO 可以导入备份数据')) return;
+  const parsed = JSON.parse(await file.text());
+  const snapshot = parsed.state || parsed;
+  if (!snapshot?.users || !snapshot?.projects || !snapshot?.sprints) {
+    throw new Error('备份文件格式不正确');
+  }
+  if (!window.confirm('确认导入备份并恢复？当前数据会被备份内容替换。')) return;
+  restoreBackupState(snapshot, 'data.backup.imported');
 }
 
 function formatDateTime(value = '') {
@@ -585,6 +612,7 @@ function pageContext() {
     canDeleteUser,
     dataBackups,
     formatDateTime,
+    exportDataBackup,
     renderProjectOverview,
     renderSprintPage,
     renderSprintCreatePage,
@@ -829,6 +857,7 @@ function render() {
     </section>
     ${renderDrawer()}
     <input id="import-file" type="file" accept=".csv,.xls,.xlsx,.json,text/csv,application/json" hidden />
+    <input id="backup-file" type="file" accept=".json,application/json" hidden />
     <div class="drawer-backdrop ${state.drawer ? 'open' : ''}" data-action="close-drawer"></div>
     <div class="toast ${state.toast ? 'show' : ''}">${escapeHtml(state.toast)}</div>
   `;
@@ -936,7 +965,7 @@ function renderAboutPage() {
         </div>
         <div class="info-block">
           <strong>未来规划</strong>
-          <p>PMO Suite 面向 PMO、项目 PM 和项目成员，当前提供轻量级项目交付管理工作台；未来将围绕多 Agent 协同、AI Native 计划生成、风险识别、进度洞察和自动化项目复盘持续演进。</p>
+              <p>PMO Suite 面向 PMO、项目 PM 和项目成员，提供完整的项目交付管理工作台；未来将围绕多 Agent 协同、AI Native 计划生成、风险识别、进度洞察和自动化项目复盘持续演进。</p>
         </div>
         <div class="info-feature-grid">
           <span>项目与 Sprint 管理</span>
@@ -2518,6 +2547,8 @@ app.addEventListener('click', (event) => {
   if (action === 'import-data') document.querySelector('#import-file')?.click();
   if (action === 'create-backup') createDataBackup();
   if (action === 'restore-backup') restoreDataBackup(id);
+  if (action === 'export-backup') exportDataBackup(id);
+  if (action === 'import-backup') document.querySelector('#backup-file')?.click();
   if (action === 'new-user') openUserDrawer('create');
   if (action === 'edit-user') openUserDrawer('edit', state.users.find((user) => user.id === id));
   if (action === 'edit-project') openProjectDrawer('edit', state.projects.find((project) => project.id === id));
@@ -2593,6 +2624,17 @@ app.addEventListener('change', async (event) => {
       showToast('导入完成');
     } catch (error) {
       showToast(`导入失败：${error.message}`);
+    } finally {
+      event.target.value = '';
+    }
+  }
+  if (event.target.id === 'backup-file') {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      await importBackupFile(file);
+    } catch (error) {
+      showToast(`备份导入失败：${error.message}`);
     } finally {
       event.target.value = '';
     }
