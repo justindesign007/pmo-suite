@@ -229,8 +229,12 @@ test('PM can create a sprint in an owned project', () => {
   const { app, listeners } = createRuntime({ currentUserId: 'u-2', selectedProjectId: 'p-1' });
 
   click(listeners, 'new-sprint', { id: 'p-1' });
-  assert.match(app.innerHTML, /data-form="sprint"/);
-  submit(listeners, 'sprint', {
+  assert.match(app.innerHTML, /Sprint 创建向导/);
+  assert.match(app.innerHTML, /data-form="sprint-create"/);
+  assert.match(app.innerHTML, /基础信息/);
+  assert.match(app.innerHTML, /计划与里程碑/);
+  assert.match(app.innerHTML, /关键需求/);
+  submit(listeners, 'sprint-create', {
     name: 'Sprint PM 操作用例',
     owner: 'u-2',
     status: 'not_started',
@@ -254,7 +258,7 @@ test('member write operations are blocked even if events are triggered manually'
   assert.doesNotMatch(app.innerHTML, /编辑项目/);
   click(listeners, 'new-sprint', { id: 'p-1' });
   assert.doesNotMatch(app.innerHTML, /data-form="sprint"/);
-  assert.match(app.innerHTML, /只有 PMO 或项目 PM 可以管理 Sprint/);
+  assert.match(app.innerHTML, /只有 PMO 或项目 PM 可以创建 Sprint/);
 
   click(listeners, 'new-project');
   assert.doesNotMatch(app.innerHTML, /data-form="project"/);
@@ -265,6 +269,11 @@ test('user drawer uses account-only fields and validates password confirmation',
   const { app, listeners, store, context } = createRuntime({ currentUserId: 'u-1' });
 
   click(listeners, 'open-users');
+  assert.match(app.innerHTML, /<table class="user-table">/);
+  assert.match(app.innerHTML, /<th>用户账号<\/th>/);
+  assert.match(app.innerHTML, /<th>姓名<\/th>/);
+  assert.match(app.innerHTML, /<th>角色<\/th>/);
+  assert.match(app.innerHTML, /<th>状态<\/th>/);
   click(listeners, 'new-user');
   assert.match(app.innerHTML, /data-form="user"/);
   assert.match(app.innerHTML, /<label>姓名<\/label>/);

@@ -641,14 +641,14 @@ function render() {
     state.view = 'overview';
   }
   ensureSelection();
-  const isDrilldown = ['sprintDetail', 'requirementDetail', 'milestoneDetail', 'sprintEditBasic', 'sprintEditPlan', 'sprintEditRequirements'].includes(state.view);
+  const isDrilldown = ['sprintDetail', 'sprintCreate', 'requirementDetail', 'milestoneDetail', 'sprintEditBasic', 'sprintEditPlan', 'sprintEditRequirements'].includes(state.view);
 
   app.innerHTML = `
     <section class="app-frame ${isDrilldown ? 'drilldown-frame' : ''}">
       ${isDrilldown ? '' : renderSystemSidebar()}
       <section class="workspace">
         ${renderTopbar()}
-        ${state.view === 'sprintDetail' ? renderSprintPage() : state.view === 'users' ? renderUserManagement() : state.view === 'about' ? renderAboutPage() : state.view === 'changelog' ? renderChangelogPage() : state.view === 'requirementDetail' ? renderRequirementPage() : state.view === 'milestoneDetail' ? renderMilestonePage() : state.view.startsWith('sprintEdit') ? renderSprintEditPage() : renderProjectOverview()}
+        ${state.view === 'sprintDetail' ? renderSprintPage() : state.view === 'sprintCreate' ? renderSprintCreatePage() : state.view === 'users' ? renderUserManagement() : state.view === 'about' ? renderAboutPage() : state.view === 'changelog' ? renderChangelogPage() : state.view === 'requirementDetail' ? renderRequirementPage() : state.view === 'milestoneDetail' ? renderMilestonePage() : state.view.startsWith('sprintEdit') ? renderSprintEditPage() : renderProjectOverview()}
       </section>
     </section>
     ${renderDrawer()}
@@ -822,6 +822,7 @@ function renderChangelogPage() {
 function renderTopbar() {
   const breadcrumbLabel = {
     sprintDetail: 'Sprint Detail',
+    sprintCreate: 'Create Sprint',
     sprintEditBasic: 'Edit Sprint',
     sprintEditPlan: 'Edit Plan',
     sprintEditRequirements: 'Edit Requirements',
@@ -890,33 +891,34 @@ function renderUserManagement() {
           </div>
           <button class="button primary" data-action="new-user">+ ${isPmo() ? '新建用户' : '新建成员'}</button>
         </div>
-        <div class="table-list">
-          ${users.map((user) => `
-            <div class="table-row">
-              <div class="user-field-grid">
-                <div>
-                  <span>用户账号</span>
-                  <strong>${escapeHtml(user.account || '-')}</strong>
-                </div>
-                <div>
-                  <span>姓名</span>
-                  <strong>${escapeHtml(user.name || '-')}</strong>
-                </div>
-                <div>
-                  <span>角色</span>
-                  <strong>${roleLabels[normalizeRole(user.role)]}</strong>
-                </div>
-                <div>
-                  <span>状态</span>
-                  <strong>${user.status === 'active' ? '启用' : '停用'}</strong>
-                </div>
-              </div>
-              <div class="card-actions">
-                <button class="link-button" data-action="edit-user" data-id="${user.id}">编辑</button>
-                ${user.id !== state.currentUserId ? `<button class="link-button danger" data-action="delete-user" data-id="${user.id}">删除</button>` : ''}
-              </div>
-            </div>
-          `).join('') || '<div class="empty-state">暂无可管理成员</div>'}
+        <div class="user-table-wrap">
+          <table class="user-table">
+            <thead>
+              <tr>
+                <th>用户账号</th>
+                <th>姓名</th>
+                <th>角色</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${users.map((user) => `
+                <tr>
+                  <td><strong>${escapeHtml(user.account || '-')}</strong></td>
+                  <td>${escapeHtml(user.name || '-')}</td>
+                  <td>${roleLabels[normalizeRole(user.role)]}</td>
+                  <td>${user.status === 'active' ? '启用' : '停用'}</td>
+                  <td>
+                    <div class="card-actions table-actions">
+                      <button class="link-button" data-action="edit-user" data-id="${user.id}">编辑</button>
+                      ${user.id !== state.currentUserId ? `<button class="link-button danger" data-action="delete-user" data-id="${user.id}">删除</button>` : ''}
+                    </div>
+                  </td>
+                </tr>
+              `).join('') || '<tr><td colspan="5"><div class="empty-state">暂无可管理成员</div></td></tr>'}
+            </tbody>
+          </table>
         </div>
       </section>
     </main>
@@ -1134,6 +1136,109 @@ function renderSprintPage() {
       </div>
       ${renderSprintDetail(sprint)}
     </section>
+  `;
+}
+
+function renderSprintCreatePage() {
+  const project = currentProject();
+  if (!project || !canManageProject(project)) {
+    state.view = 'overview';
+    return '';
+  }
+  if (state.edit?.type !== 'sprint-create' || state.edit.draft?.projectId !== project.id) {
+    state.edit = { type: 'sprint-create', step: 'basic', draft: createSprintDraft(project.id) };
+  }
+  const draft = state.edit.draft;
+  const step = state.edit.step || 'basic';
+  return `
+    <section class="detail-page">
+      <div class="detail-nav">
+        <button class="button" data-action="cancel-sprint-create">← 返回项目 Sprint 列表</button>
+        <div class="small">当前项目：${escapeHtml(project.name)}</div>
+      </div>
+      <section class="panel hero sprint-hero edit-hero">
+        <div class="hero-content">
+          <div class="hero-title">
+            <div>
+              <p class="eyebrow">Sprint 创建向导</p>
+              <h2>新建 Sprint</h2>
+              <p class="muted">按步骤录入基础信息、计划与里程碑、关键需求。</p>
+            </div>
+          </div>
+          ${renderSprintWizard(step, draft)}
+        </div>
+      </section>
+    </section>
+  `;
+}
+
+function createSprintDraft(projectId = state.selectedProjectId) {
+  const project = state.projects.find((item) => item.id === projectId) || currentProject();
+  return {
+    id: uid('s'),
+    projectId,
+    name: '',
+    goal: '',
+    description: '',
+    owner: firstProjectMember(projectId),
+    status: 'not_started',
+    priority: 'medium',
+    startDate: project?.startDate || today(),
+    endDate: project?.endDate || today(),
+    businessGoal: '',
+    deliveryGoal: '',
+    qualityGoal: '',
+    acceptanceCriteria: '',
+    teams: ['产品', '研发'],
+    riskNote: '',
+    createdAt: today(),
+    updatedAt: today(),
+    requirements: [],
+    milestones: [],
+    timelineNodes: [],
+  };
+}
+
+function renderSprintWizard(step, draft) {
+  const steps = [
+    ['basic', '基础信息'],
+    ['plan', '计划与里程碑'],
+    ['requirements', '关键需求'],
+  ];
+  return `
+    <form data-form="sprint-create" class="edit-page-form wizard-form">
+      <div class="wizard-steps">
+        ${steps.map(([key, label], index) => `<button type="button" class="wizard-step ${step === key ? 'active' : ''}" data-action="sprint-create-step" data-step="${key}"><span>${index + 1}</span>${label}</button>`).join('')}
+      </div>
+      <div class="wizard-panel ${step === 'basic' ? 'active' : ''}">
+        <div class="form-grid">
+          ${hiddenField('id', draft.id)}
+          ${hiddenField('projectId', draft.projectId)}
+          ${field('Sprint 名称', 'name', draft.name, 'text', true)}
+          ${selectField('Sprint Owner', 'owner', projectMemberOptions(draft.projectId, draft.owner))}
+          ${selectField('Sprint 状态', 'status', sprintStatusOptions(draft.status))}
+          ${selectField('优先级', 'priority', priorityOptions(draft.priority))}
+          ${field('开始日期', 'startDate', draft.startDate, 'date', true)}
+          ${field('结束日期', 'endDate', draft.endDate, 'date', true)}
+          ${textareaField('Sprint 描述', 'description', draft.description)}
+          ${textareaField('Sprint 目标', 'goal', draft.goal, true)}
+          ${textareaField('验收标准', 'acceptanceCriteria', draft.acceptanceCriteria)}
+          ${textareaField('风险说明', 'riskNote', draft.riskNote)}
+        </div>
+      </div>
+      <div class="wizard-panel ${step === 'plan' ? 'active' : ''}">
+        ${renderRepeatSection('milestones', '里程碑', draft.milestones || [], renderMilestoneForm)}
+        ${renderRepeatSection('timelineNodes', '时间轴节点', draft.timelineNodes || [], renderTimelineNodeForm)}
+      </div>
+      <div class="wizard-panel ${step === 'requirements' ? 'active' : ''}">
+        ${renderRepeatSection('requirements', '关键需求', draft.requirements || [], renderRequirementForm)}
+      </div>
+      <div class="edit-page-footer">
+        <button type="button" class="button" data-action="cancel-sprint-create">取消</button>
+        ${step !== 'basic' ? '<button type="button" class="button" data-action="sprint-create-prev">上一步</button>' : ''}
+        ${step !== 'requirements' ? '<button type="button" class="button primary" data-action="sprint-create-next">下一步</button>' : '<button type="submit" class="button primary">创建 Sprint</button>'}
+      </div>
+    </form>
   `;
 }
 
@@ -1797,6 +1902,30 @@ function openSprintEdit(mode = 'basic', sprint = currentSprint(), appendKey = ''
   render();
 }
 
+function openSprintCreate(projectId = state.selectedProjectId) {
+  const project = state.projects.find((item) => item.id === projectId) || currentProject();
+  if (!requirePermission(canManageProject(project), '只有 PMO 或项目 PM 可以创建 Sprint')) return;
+  state.selectedProjectId = project.id;
+  state.drawer = null;
+  state.edit = { type: 'sprint-create', step: 'basic', draft: createSprintDraft(project.id) };
+  state.view = 'sprintCreate';
+  render();
+}
+
+function setSprintCreateStep(step) {
+  if (!state.edit || state.edit.type !== 'sprint-create') return;
+  state.edit.step = step;
+  render();
+}
+
+function sprintCreateStepOffset(offset) {
+  if (!state.edit || state.edit.type !== 'sprint-create') return;
+  const order = ['basic', 'plan', 'requirements'];
+  const index = order.indexOf(state.edit.step || 'basic');
+  state.edit.step = order[Math.max(0, Math.min(order.length - 1, index + offset))];
+  render();
+}
+
 function showToast(message) {
   state.toast = message;
   render();
@@ -1945,6 +2074,35 @@ function saveSprint(form) {
   state.drawer = null;
   persistState();
   showToast('Sprint 已保存');
+}
+
+function saveSprintCreate(form) {
+  const sprint = readForm(form);
+  const project = state.projects.find((item) => item.id === sprint.projectId) || currentProject();
+  if (!requirePermission(canManageProject(project), '只有 PMO 或项目 PM 可以创建 Sprint')) return;
+  const error = validateSprint(sprint);
+  if (error) {
+    showToast(error);
+    return;
+  }
+
+  const requirements = (sprint.requirements || []).map((item) => ({ ...item, id: item.id || uid('r'), sprintId: sprint.id }));
+  const milestones = (sprint.milestones || []).map((item) => ({ ...item, id: item.id || uid('m'), sprintId: sprint.id }));
+  const timelineNodes = (sprint.timelineNodes || []).map((item) => ({ ...item, id: item.id || uid('t'), sprintId: sprint.id, requirementIds: item.requirementIds || [] }));
+  delete sprint.requirements;
+  delete sprint.milestones;
+  delete sprint.timelineNodes;
+  sprint.updatedAt = today();
+  state.sprints.unshift(sprint);
+  state.requirements = state.requirements.concat(requirements);
+  state.milestones = state.milestones.concat(milestones);
+  state.timelineNodes = state.timelineNodes.concat(timelineNodes);
+  state.selectedProjectId = sprint.projectId;
+  state.selectedSprintId = sprint.id;
+  state.edit = null;
+  state.view = 'sprintDetail';
+  persistState('sprint.created');
+  showToast('Sprint 已创建');
 }
 
 function saveSprintEdit(form) {
@@ -2141,7 +2299,7 @@ function removeRepeat(key, index) {
 app.addEventListener('click', (event) => {
   const target = event.target.closest('[data-action]');
   if (!target) return;
-  const { action, id, key, index, view, section, add } = target.dataset;
+  const { action, id, key, index, view, section, add, step } = target.dataset;
 
   if (action === 'select-project') {
     state.selectedProjectId = id;
@@ -2159,6 +2317,11 @@ app.addEventListener('click', (event) => {
   if (action === 'back-overview') {
     state.view = 'overview';
     state.edit = null;
+    render();
+  }
+  if (action === 'cancel-sprint-create') {
+    state.edit = null;
+    state.view = 'overview';
     render();
   }
   if (action === 'back-sprint') {
@@ -2213,7 +2376,19 @@ app.addEventListener('click', (event) => {
       state.selectedProjectId = id;
       state.selectedSprintId = projectSprints(id)[0]?.id || '';
     }
-    openSprintDrawer('create');
+    openSprintCreate(id || state.selectedProjectId);
+  }
+  if (action === 'sprint-create-step') {
+    state.edit.draft = readForm(target.closest('form'));
+    setSprintCreateStep(step);
+  }
+  if (action === 'sprint-create-next') {
+    state.edit.draft = readForm(target.closest('form'));
+    sprintCreateStepOffset(1);
+  }
+  if (action === 'sprint-create-prev') {
+    state.edit.draft = readForm(target.closest('form'));
+    sprintCreateStepOffset(-1);
   }
   if (action === 'edit-sprint') openSprintDrawer('edit', state.sprints.find((sprint) => sprint.id === id));
   if (action === 'edit-sprint-section') openSprintEdit(section, state.sprints.find((sprint) => sprint.id === id), add);
@@ -2280,6 +2455,7 @@ app.addEventListener('submit', (event) => {
   if (form.dataset.form === 'login') login(form);
   if (form.dataset.form === 'project') saveProject(form);
   if (form.dataset.form === 'sprint') saveSprint(form);
+  if (form.dataset.form === 'sprint-create') saveSprintCreate(form);
   if (form.dataset.form?.startsWith('sprint-edit-')) saveSprintEdit(form);
   if (form.dataset.form === 'user') saveUser(form);
 });

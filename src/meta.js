@@ -1,8 +1,16 @@
 window.PMO_META = {
   "version": "0.6.0",
-  "buildDate": "2026-05-11 22:19",
+  "buildDate": "2026-05-11 22:39",
   "dataSchema": 1,
   "changelog": [
+    {
+      "commit": "4d8ffd5",
+      "date": "2026-05-11 22:19",
+      "message": "Polish project cards and login account sync",
+      "points": [
+        "完成一次系统功能更新"
+      ]
+    },
     {
       "commit": "c45defc",
       "date": "2026-05-11 22:04",
@@ -63,15 +71,6 @@ window.PMO_META = {
       "points": [
         "切换为用户账号登录",
         "固定左侧系统菜单高度与滚动结构"
-      ]
-    },
-    {
-      "commit": "549944c",
-      "date": "2026-05-11 17:42",
-      "message": "Refine sidebar account actions and permissions",
-      "points": [
-        "优化侧边栏账号与退出操作",
-        "完善 PMO、PM、成员权限展示"
       ]
     }
   ]
