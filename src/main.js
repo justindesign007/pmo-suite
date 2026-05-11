@@ -386,6 +386,14 @@ function visibleUsers() {
   return [];
 }
 
+function canEditUser(user) {
+  return isPmo() || (isPm() && normalizeRole(user?.role) === 'member');
+}
+
+function canDeleteUser(user) {
+  return user?.id !== state.currentUserId && canEditUser(user);
+}
+
 function requirePermission(allowed, message = '当前账号无权限执行该操作') {
   if (allowed) return true;
   showToast(message);
@@ -659,7 +667,6 @@ function render() {
 }
 
 function renderLoginPage() {
-  const activeUsers = systemUsers().filter((user) => user.status === 'active');
   return `
     <main class="login-page">
       <section class="login-card panel">
@@ -672,17 +679,14 @@ function renderLoginPage() {
         <form data-form="login" class="login-form" novalidate>
           <div class="field">
             <label>用户账号</label>
-            <input name="account" type="text" list="login-users" placeholder="请选择或输入用户账号" autocomplete="username" />
-            <datalist id="login-users">
-              ${activeUsers.map((user) => `<option value="${escapeHtml(user.account)}">${escapeHtml(user.account)} · ${escapeHtml(user.name)} · ${roleLabels[normalizeRole(user.role)]}</option>`).join('')}
-            </datalist>
+            <input name="account" type="text" placeholder="请输入用户账号" autocomplete="username" />
           </div>
           <div class="field">
             <label>密码</label>
             <input name="password" type="password" placeholder="请输入密码" autocomplete="current-password" />
           </div>
           ${state.loginError ? `<p class="login-error">${escapeHtml(state.loginError)}</p>` : ''}
-          <button class="button primary" type="button" data-action="login-submit" onclick="window.pmoLogin(event)">登录</button>
+          <button class="button primary" type="submit">登录</button>
         </form>
       </section>
     </main>
@@ -911,8 +915,8 @@ function renderUserManagement() {
                   <td>${user.status === 'active' ? '启用' : '停用'}</td>
                   <td>
                     <div class="card-actions table-actions">
-                      <button class="link-button" data-action="edit-user" data-id="${user.id}">编辑</button>
-                      ${user.id !== state.currentUserId ? `<button class="link-button danger" data-action="delete-user" data-id="${user.id}">删除</button>` : ''}
+                      ${canEditUser(user) ? `<button class="link-button" data-action="edit-user" data-id="${user.id}">编辑</button>` : '<button class="link-button" disabled>编辑</button>'}
+                      ${canDeleteUser(user) ? `<button class="link-button danger" data-action="delete-user" data-id="${user.id}">删除</button>` : '<button class="link-button danger" disabled>删除</button>'}
                     </div>
                   </td>
                 </tr>

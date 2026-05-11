@@ -1,8 +1,16 @@
 window.PMO_META = {
   "version": "0.6.0",
-  "buildDate": "2026-05-11 22:39",
+  "buildDate": "2026-05-11 22:56",
   "dataSchema": 1,
   "changelog": [
+    {
+      "commit": "8b84f6a",
+      "date": "2026-05-11 22:39",
+      "message": "Add sprint creation wizard and user table",
+      "points": [
+        "完成一次系统功能更新"
+      ]
+    },
     {
       "commit": "4d8ffd5",
       "date": "2026-05-11 22:19",
@@ -62,15 +70,6 @@ window.PMO_META = {
       "points": [
         "补充 Sprint 详情页功能用例",
         "验证项目与 Sprint 关联切换"
-      ]
-    },
-    {
-      "commit": "e9295c9",
-      "date": "2026-05-11 18:08",
-      "message": "Use account login and fixed sidebar layout",
-      "points": [
-        "切换为用户账号登录",
-        "固定左侧系统菜单高度与滚动结构"
       ]
     }
   ]

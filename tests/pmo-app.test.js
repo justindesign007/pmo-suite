@@ -100,36 +100,20 @@ function storedState(store) {
   return JSON.parse(store.get('pmo-sprint-api-cache-v2'));
 }
 
-test('strict account login works when preview storage writes are blocked', () => {
-  const { app, context } = createRuntime(null, { blockStorage: true });
+test('strict account login works through standard form submit when preview storage writes are blocked', () => {
+  const { app, listeners } = createRuntime(null, { blockStorage: true });
 
   assert.match(app.innerHTML, /login-page/);
-  context.window.pmoLogin({
-    preventDefault() {},
-    stopPropagation() {},
-    target: {
-      closest() {
-        return { fields: { account: '', password: '' } };
-      },
-    },
-  });
+  submit(listeners, 'login', { account: '', password: '' });
   assert.match(app.innerHTML, /请输入完整的用户账号和密码/);
   assert.match(app.innerHTML, /login-page/);
 
-  context.window.pmoLogin({
-    preventDefault() {},
-    stopPropagation() {},
-    target: {
-      closest() {
-        return { fields: { account: 'zhangsan', password: '123456' } };
-      },
-    },
-  });
+  submit(listeners, 'login', { account: 'zhangsan', password: '123456' });
   assert.doesNotMatch(app.innerHTML, /login-page/);
   assert.match(app.innerHTML, /system-sidebar/);
 });
 
-test('login account suggestions come from current user accounts', () => {
+test('login uses a plain account input without dropdown suggestions', () => {
   const savedState = {
     users: [
       { id: 'u-x', name: '新成员', account: 'newmember', password: 'pw', role: 'member', status: 'active' },
@@ -137,8 +121,11 @@ test('login account suggestions come from current user accounts', () => {
   };
   const { app } = createRuntime(savedState);
 
-  assert.match(app.innerHTML, /value="newmember"/);
-  assert.match(app.innerHTML, /newmember · 新成员 · 成员/);
+  assert.match(app.innerHTML, /name="account" type="text"/);
+  assert.match(app.innerHTML, /placeholder="请输入用户账号"/);
+  assert.doesNotMatch(app.innerHTML, /<datalist/);
+  assert.doesNotMatch(app.innerHTML, /list="login-users"/);
+  assert.doesNotMatch(app.innerHTML, /newmember · 新成员 · 成员/);
   assert.doesNotMatch(app.innerHTML, /例如 zhangsan/);
 });
 
@@ -274,6 +261,8 @@ test('user drawer uses account-only fields and validates password confirmation',
   assert.match(app.innerHTML, /<th>姓名<\/th>/);
   assert.match(app.innerHTML, /<th>角色<\/th>/);
   assert.match(app.innerHTML, /<th>状态<\/th>/);
+  assert.match(app.innerHTML, /<th>操作<\/th>/);
+  assert.match(app.innerHTML, /<button class="link-button danger" disabled>删除<\/button>/);
   click(listeners, 'new-user');
   assert.match(app.innerHTML, /data-form="user"/);
   assert.match(app.innerHTML, /<label>姓名<\/label>/);
