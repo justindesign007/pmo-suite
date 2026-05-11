@@ -716,22 +716,24 @@ function renderSystemSidebar() {
             <span>${roleLabels[currentRole()]} · ${escapeHtml(user?.name || user?.account || '-')}</span>
           </div>
         </div>
-        <div class="sidebar-account-meta">已登录 · ${activeProjects} 个进行中项目</div>
+        <div class="sidebar-session-row">
+          <span>已登录</span>
+          <button class="sidebar-inline-action" data-action="logout">退出</button>
+        </div>
         <details class="sidebar-meta">
-          <summary>关于与版本</summary>
+          <summary><span>关于我们</span><strong>v${escapeHtml(appMeta.version)}</strong></summary>
           <div class="sidebar-meta-panel">
             <strong>PMO Suite</strong>
             <span>项目与 Sprint 管理 MVP</span>
-            <span>版本 ${escapeHtml(appMeta.version)} · ${escapeHtml(appMeta.buildDate)}</span>
+            <span>${escapeHtml(appMeta.buildDate)} · ${activeProjects} 个进行中项目</span>
           </div>
         </details>
         <details class="sidebar-meta">
-          <summary>更新日志</summary>
+          <summary><span>更新日志</span><strong>${changelog.length} 条</strong></summary>
           <div class="sidebar-meta-panel changelog">
             ${changelog.map((item) => `<span>${escapeHtml(item.date)} · ${escapeHtml(item.commit)}<br />${escapeHtml(item.message)}</span>`).join('') || '<span>暂无更新日志</span>'}
           </div>
         </details>
-        <button class="sidebar-logout" data-action="logout">退出</button>
       </div>
     </aside>
   `;
@@ -1055,7 +1057,6 @@ function renderSprintDetail(sprint) {
         </div>
         <div class="summary-grid">
           <div class="summary-card"><span>Sprint Owner</span><strong>${escapeHtml(userName(sprint.owner))}</strong></div>
-          <div class="summary-card"><span>Sprint 状态</span><strong>${statusLabels[sprint.status]}</strong></div>
           <div class="summary-card"><span>Sprint 周期</span><strong>${dateText(sprint.startDate)} - ${dateText(sprint.endDate)}</strong></div>
           <div class="summary-card"><span>优先级</span><strong>${escapeHtml(sprint.priority || '-')}</strong></div>
         </div>
@@ -1077,14 +1078,24 @@ function renderSprintDetail(sprint) {
         </div>` : ''}
       </div>
       ${renderTimeline(sprint, timelineNodes)}
+      <div class="subsection-label">
+        <span>里程碑清单</span>
+        <strong>${milestones.length} 个</strong>
+      </div>
       <div class="milestone-strip">
         ${milestones.length ? milestones.map(renderMilestone).join('') : '<div class="timeline-empty">暂无里程碑，点击右上角按钮添加。</div>'}
       </div>
     </section>
     <section class="panel card">
       <div class="section-head">
-        <h2>关键需求</h2>
-        <span class="small">${requirements.length} 条</span>
+        <div>
+          <h2>关键需求</h2>
+          <p class="small">需求详情与 WeTask 链接可在 Sprint 编辑中维护。</p>
+        </div>
+        <div class="card-actions">
+          <span class="small">${requirements.length} 条</span>
+          ${canManage ? `<button class="button" data-action="edit-sprint" data-id="${sprint.id}">维护需求链接</button>` : ''}
+        </div>
       </div>
       <div class="mini-list">
         ${requirements.length ? requirements.map(renderRequirement).join('') : '<div class="timeline-empty">暂无关键需求</div>'}
@@ -1200,13 +1211,17 @@ function renderRequirement(req) {
   return `
     <div class="mini-item" data-action="open-requirement" data-id="${req.id}" tabindex="0">
       <div class="mini-item-head">
-        <strong>${escapeHtml(req.code)} · ${escapeHtml(req.title)}</strong>
-        <span class="badge ${req.priority === 'P0' ? 'danger' : req.priority === 'P1' ? 'warning' : 'neutral'}">${req.priority}</span>
+        <div>
+          <strong>${escapeHtml(req.code)} · ${escapeHtml(req.title)}</strong>
+          <p class="small">${escapeHtml(req.description || '暂无描述')}</p>
+        </div>
+        <div class="requirement-actions">
+          <span class="badge ${req.priority === 'P0' ? 'danger' : req.priority === 'P1' ? 'warning' : 'neutral'}">${req.priority}</span>
+          ${wetaskUrl ? `<a class="external-link wetask-pill" href="${escapeHtml(wetaskUrl)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation()">WeTask</a>` : '<span class="small">未绑定 WeTask</span>'}
+        </div>
       </div>
-      <p class="small">${escapeHtml(req.description || '暂无描述')}</p>
       <div class="mini-item-foot">
         <p class="small">Owner ${escapeHtml(userName(req.owner || '-'))} · ${statusLabels[req.status]} · 交付 ${dateText(req.expectedDeliveryDate)}</p>
-        ${wetaskUrl ? `<a class="external-link" href="${escapeHtml(wetaskUrl)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation()">WeTask 需求</a>` : '<span class="small">未绑定 WeTask</span>'}
       </div>
     </div>
   `;

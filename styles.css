@@ -103,18 +103,32 @@ button {
 }
 
 .login-brand {
-  margin-bottom: 30px;
+  margin-bottom: 26px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 14px;
   text-align: center;
 }
 
+.login-brand .system-logo {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+}
+
+.login-brand .logo-mark {
+  width: 28px;
+  height: 28px;
+  grid-template-columns: 12px 12px;
+  grid-template-rows: 12px 12px;
+  gap: 4px;
+}
+
 .login-brand h1 {
-  font-size: clamp(30px, 5vw, 42px);
-  letter-spacing: -0.04em;
+  font-size: clamp(26px, 3.6vw, 34px);
+  letter-spacing: -0.05em;
 }
 
 .login-form {
@@ -274,9 +288,9 @@ button {
 .system-sidebar-foot {
   margin-top: auto;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 16px 10px 4px;
+  padding: 14px 8px 4px;
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .sidebar-user {
@@ -316,23 +330,52 @@ button {
   font-size: 13px;
 }
 
-.sidebar-account-meta {
+.sidebar-session-row {
+  min-height: 34px;
+  border-radius: 10px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   color: rgba(255, 255, 255, 0.46);
   font-size: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sidebar-inline-action {
+  border: 0;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.82);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .sidebar-meta {
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
-  padding: 9px 10px;
+  padding: 0;
   color: rgba(255, 255, 255, 0.76);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.035);
+  overflow: hidden;
 }
 
 .sidebar-meta summary {
   cursor: pointer;
   list-style: none;
+  min-height: 38px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   font-size: 13px;
+  font-weight: 700;
+}
+
+.sidebar-meta summary strong {
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -341,7 +384,8 @@ button {
 }
 
 .sidebar-meta-panel {
-  margin-top: 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 9px 10px 10px;
   display: grid;
   gap: 5px;
   color: rgba(255, 255, 255, 0.55);
@@ -359,7 +403,7 @@ button {
 }
 
 .sidebar-meta-panel.changelog {
-  max-height: 142px;
+  max-height: 118px;
   overflow: auto;
 }
 
@@ -439,7 +483,7 @@ h1 {
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -500,8 +544,9 @@ h1 {
 }
 
 .control {
-  min-height: 42px;
-  padding: 0 14px;
+  min-height: 38px;
+  padding: 0 12px;
+  font-size: 13px;
 }
 
 .control:focus,
@@ -514,16 +559,18 @@ h1 {
 }
 
 .button {
-  min-height: 42px;
+  min-height: 38px;
   border: 0;
-  border-radius: 12px;
-  padding: 0 16px;
+  border-radius: 11px;
+  padding: 0 13px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   color: var(--text);
   background: var(--surface);
+  font-size: 13px;
+  font-weight: 700;
   box-shadow: inset 0 0 0 1px var(--line);
 }
 
@@ -742,9 +789,9 @@ h1 {
 
 .advanced-menu > summary {
   list-style: none;
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
   display: grid;
   place-items: center;
   color: var(--muted);
@@ -1184,6 +1231,7 @@ h1 {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .link-button {
@@ -1249,13 +1297,31 @@ h1 {
   align-items: center;
 }
 
+.subsection-label {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.subsection-label span {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.subsection-label strong {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .milestone-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
-  margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
+  margin-top: 10px;
 }
 
 .milestone-item {
@@ -1284,6 +1350,7 @@ h1 {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  align-items: flex-start;
   margin-bottom: 6px;
 }
 
@@ -1305,6 +1372,21 @@ h1 {
   font-weight: 800;
   text-decoration: none;
   white-space: nowrap;
+}
+
+.requirement-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.wetask-pill {
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #284531;
+  background: #e8f2df;
+  box-shadow: inset 0 0 0 1px rgba(54, 83, 59, 0.08);
 }
 
 .external-link:hover {

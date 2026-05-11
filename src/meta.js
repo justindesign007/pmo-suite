@@ -4,6 +4,11 @@ window.PMO_META = {
   "dataSchema": 1,
   "changelog": [
     {
+      "commit": "5073546",
+      "date": "2026-05-11",
+      "message": "Refine user management and release metadata"
+    },
+    {
       "commit": "bf33bee",
       "date": "2026-05-11",
       "message": "Add functional coverage for sprint detail flow"
@@ -22,11 +27,6 @@ window.PMO_META = {
       "commit": "752ea35",
       "date": "2026-05-11",
       "message": "Fix preview login without bypassing auth"
-    },
-    {
-      "commit": "d63369e",
-      "date": "2026-05-11",
-      "message": "Fix preview login entry"
     }
   ]
 };
