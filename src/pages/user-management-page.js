@@ -13,9 +13,9 @@
             <div class="section-head">
               <div>
                 <h2>${ctx.isPmo() ? '系统用户' : '项目成员'}</h2>
-                <p class="small">${ctx.isPmo() ? 'PMO 可设置 PM、成员和角色权限。' : 'PM 可维护普通成员账号，角色权限由 PMO 设置。'}</p>
+                <p class="small">${ctx.isPmo() ? 'PMO 可设置 PM、成员和角色权限。' : 'PM 可查看项目相关账号，用户增删改由 PMO 统一维护。'}</p>
               </div>
-              <button class="button" data-action="new-user">+ ${ctx.isPmo() ? '新建用户' : '新建成员'}</button>
+              ${ctx.isPmo() ? '<button class="button" data-action="new-user">+ 新建用户</button>' : ''}
             </div>
             <div class="user-table-wrap">
               <table class="user-table">

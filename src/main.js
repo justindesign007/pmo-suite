@@ -423,18 +423,27 @@ function canManageProjectMembers(project) {
   return canManageProject(project);
 }
 
+const roleSortOrder = { pmo: 0, pm: 1, member: 2 };
+
+function sortUsersByRole(users = []) {
+  return [...users].sort((a, b) => {
+    const roleDelta = (roleSortOrder[normalizeRole(a.role)] ?? 9) - (roleSortOrder[normalizeRole(b.role)] ?? 9);
+    if (roleDelta) return roleDelta;
+    return String(a.account || a.name || '').localeCompare(String(b.account || b.name || ''), 'zh-Hans-CN');
+  });
+}
+
 function visibleUsers() {
-  if (isPmo()) return systemUsers();
-  if (isPm()) return systemUsers().filter((user) => normalizeRole(user.role) === 'member');
+  if (isPmo() || isPm()) return sortUsersByRole(systemUsers());
   return [];
 }
 
-function canEditUser(user) {
-  return isPmo() || (isPm() && normalizeRole(user?.role) === 'member');
+function canEditUser() {
+  return isPmo();
 }
 
 function canDeleteUser(user) {
-  return user?.id !== state.currentUserId && canEditUser(user);
+  return isPmo() && user?.id !== state.currentUserId;
 }
 
 function requirePermission(allowed, message = '当前账号无权限执行该操作') {
@@ -526,7 +535,7 @@ function createBackupRecord(snapshot = businessSnapshot()) {
     format: 'pmo-suite-backup',
     version: 1,
     id: uid('backup'),
-    createdAt: new Date().toISOString(),
+    createdAt: currentLocalMinute(),
     createdBy: state.currentUserId,
     summary: backupSummary(snapshot),
     state: snapshot,
@@ -596,7 +605,13 @@ async function importBackupFile(file) {
 
 function formatDateTime(value = '') {
   if (!value) return '-';
-  return String(value).replace('T', ' ').slice(0, 16);
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(text)) return text.slice(0, 16);
+  return text.replace('T', ' ').slice(0, 16);
+}
+
+function currentLocalMinute(date = new Date()) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
 function pageContext() {
@@ -1979,11 +1994,7 @@ function openProjectDrawer(mode, project = null) {
 }
 
 function openUserDrawer(mode, user = null) {
-  if (!requirePermission(canManageUsers(), '只有 PMO 和 PM 可以进入成员管理')) return;
-  if (!isPmo() && user && normalizeRole(user.role) !== 'member') {
-    showToast('PM 只能维护普通成员账号');
-    return;
-  }
+  if (!requirePermission(isPmo(), '只有 PMO 可以新增和编辑用户')) return;
   state.drawer = {
     type: 'user',
     mode,
@@ -2331,14 +2342,10 @@ function saveSprintEdit(form) {
 function saveUser(form) {
   const user = readForm(form);
   const existing = state.users.find((item) => item.id === user.id);
-  if (!requirePermission(canManageUsers(), '只有 PMO 和 PM 可以保存成员')) return;
+  if (!requirePermission(isPmo(), '只有 PMO 可以保存用户')) return;
   if (!user.password && existing) {
     user.password = existing.password;
     user.confirmPassword = existing.password;
-  }
-  if (!isPmo()) {
-    user.role = 'member';
-    user.status = existing?.status || 'active';
   }
   user.status = 'active';
   user.authManaged = true;
@@ -2686,13 +2693,9 @@ function deleteSprint(id) {
 
 function deleteUser(id) {
   const user = state.users.find((item) => item.id === id);
-  if (!requirePermission(canManageUsers(), '只有 PMO 和 PM 可以删除成员')) return;
+  if (!requirePermission(isPmo(), '只有 PMO 可以删除用户')) return;
   if (user?.id === state.currentUserId) {
     showToast('不能删除当前登录账号');
-    return;
-  }
-  if (!isPmo() && normalizeRole(user?.role) !== 'member') {
-    showToast('PM 只能删除普通成员账号');
     return;
   }
   if (!user || !window.confirm(`确认删除用户「${user.name}」？`)) return;

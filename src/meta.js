@@ -1,8 +1,18 @@
 window.PMO_META = {
-  "version": "0.6.24",
-  "buildDate": "2026-05-12 00:00",
+  "version": "0.6.25",
+  "buildDate": "2026-05-12 00:10",
   "dataSchema": 1,
   "changelog": [
+    {
+      "version": "0.6.25",
+      "date": "2026-05-12 00:10",
+      "message": "Restrict PM user management and align timestamps",
+      "points": [
+        "PM 成员管理调整为只读查看，用户新增、编辑和删除仅 PMO 可操作",
+        "成员管理列表按 PMO、PM、成员顺序展示，便于识别账号权限层级",
+        "数据备份时间与版本日志时间统一为 YYYY-MM-DD HH:mm 格式"
+      ]
+    },
     {
       "version": "0.6.24",
       "date": "2026-05-12 00:00",

@@ -6,6 +6,7 @@ const log = execFileSync('git', ['log', '--date=format-local:%Y-%m-%d %H:%M', '-
 });
 
 const zhSummary = {
+  'Restrict PM user management and align timestamps': ['PM 成员管理调整为只读查看，用户新增、编辑和删除仅 PMO 可操作', '成员管理列表按 PMO、PM、成员顺序展示，便于识别账号权限层级', '数据备份时间与版本日志时间统一为 YYYY-MM-DD HH:mm 格式'],
   'Expand backup portability and product positioning': ['备份范围覆盖核心业务数据、审计日志和可选体验状态', '新增 PMO 备份文件导出和导入恢复能力，降低本地或服务端存储异常造成的数据丢失风险', '移除产品 MVP 定位表述，并优化成员管理表格列宽与间距'],
   'Split pages and backup navigation': ['将首页、二级页面、三级页面、用户管理和数据备份拆分为语义化页面文件', '数据备份升级为 PMO 独立一级菜单，成员管理仅保留用户管理职责', '新增 URL hash 页面同步，刷新后可保持当前页面位置'],
   'Add non-destructive backups and recovery': ['新增 PMO 手动数据备份与恢复能力，支持用户数据丢失后从本地快照恢复', '修正内置账号恢复策略，避免覆盖已有用户记录和自定义成员信息', '优化项目图标主色搭配、Sprint 按钮样式和成员表格操作列对齐'],

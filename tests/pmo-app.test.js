@@ -239,6 +239,58 @@ test('role permissions render as PMO full access, PM project operations, member 
   assert.doesNotMatch(member, /\+ Sprint/);
 });
 
+test('PM can view but cannot modify system users', () => {
+  const { app, listeners } = createRuntime({ currentUserId: 'u-2' });
+
+  click(listeners, 'open-users');
+  assert.match(app.innerHTML, /系统用户|项目成员/);
+  assert.match(app.innerHTML, /zhangsan/);
+  assert.match(app.innerHTML, /lisi/);
+  assert.match(app.innerHTML, /wangwu/);
+  assert.doesNotMatch(app.innerHTML, /data-action="new-user"/);
+  assert.doesNotMatch(app.innerHTML, /data-action="edit-user"/);
+  assert.doesNotMatch(app.innerHTML, /data-action="delete-user"/);
+  assert.match(app.innerHTML, /<button class="link-button" disabled>编辑<\/button>/);
+  assert.match(app.innerHTML, /<button class="link-button danger" disabled>删除<\/button>/);
+
+  click(listeners, 'new-user');
+  assert.doesNotMatch(app.innerHTML, /data-form="user"/);
+  assert.match(app.innerHTML, /只有 PMO 可以新增和编辑用户/);
+
+  submit(listeners, 'user', {
+    account: 'pmblocked',
+    name: 'PM 禁止创建',
+    password: 'abc123',
+    confirmPassword: 'abc123',
+    role: 'member',
+    status: 'active',
+  });
+  assert.match(app.innerHTML, /只有 PMO 可以保存用户/);
+  assert.doesNotMatch(app.innerHTML, /pmblocked/);
+
+  click(listeners, 'delete-user', { id: 'u-3' });
+  assert.match(app.innerHTML, /只有 PMO 可以删除用户/);
+  assert.match(app.innerHTML, /wangwu/);
+});
+
+test('user management list is sorted by PMO, PM, then members', () => {
+  const { app, listeners } = createRuntime({
+    currentUserId: 'u-pmo-a',
+    users: [
+      { id: 'u-member-z', name: '赵敏', account: 'zhaomin', password: '123456', role: 'member', status: 'active' },
+      { id: 'u-pm-a', name: '李四', account: 'lisi', password: '123456', role: 'pm', status: 'active' },
+      { id: 'u-pmo-a', name: '张三', account: 'zhangsan', password: '123456', role: 'pmo', status: 'active' },
+      { id: 'u-member-a', name: '王五', account: 'wangwu', password: '123456', role: 'member', status: 'active' },
+    ],
+  });
+
+  click(listeners, 'open-users');
+  const html = app.innerHTML.match(/<tbody>[\s\S]*<\/tbody>/)?.[0] || '';
+  assert.equal(html.indexOf('zhangsan') < html.indexOf('lisi'), true);
+  assert.equal(html.indexOf('lisi') < html.indexOf('wangwu'), true);
+  assert.equal(html.indexOf('wangwu') < html.indexOf('zhaomin'), true);
+});
+
 test('opening a sprint detail syncs the owning project before rendering detail page', () => {
   const savedState = {
     currentUserId: 'u-1',
@@ -462,6 +514,8 @@ test('PMO can create, export, import, and restore data backups without clearing 
   assert.equal(backups.length, 1);
   assert.equal(backups[0].summary.users, 5);
   assert.equal(backups[0].format, 'pmo-suite-backup');
+  assert.match(backups[0].createdAt, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+  assert.match(app.innerHTML, new RegExp(backups[0].createdAt.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 
   click(listeners, 'export-backup', { id: backups[0].id });
   assert.equal(downloads.at(-1).download.startsWith('pmo-suite-backup-'), true);
