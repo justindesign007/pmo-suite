@@ -7,6 +7,19 @@ const roleLabels = {
   member: '成员',
 };
 
+const pinyinMap = {
+  张: 'zhang',
+  三: 'san',
+  李: 'li',
+  四: 'si',
+  王: 'wang',
+  五: 'wu',
+  赵: 'zhao',
+  敏: 'min',
+  陈: 'chen',
+  晨: 'chen',
+};
+
 const statusLabels = {
   planning: '规划中',
   active: '进行中',
@@ -47,10 +60,10 @@ const defaultState = {
   drawer: null,
   toast: '',
   users: [
-    { id: 'u-1', name: '张三', email: 'zhangsan@example.com', password: '123456', role: 'pmo', status: 'active' },
-    { id: 'u-2', name: '李四', email: 'lisi@example.com', password: '123456', role: 'pm', status: 'active' },
-    { id: 'u-3', name: '王五', email: 'wangwu@example.com', password: '123456', role: 'member', status: 'active' },
-    { id: 'u-4', name: '赵敏', email: 'zhaomin@example.com', password: '123456', role: 'member', status: 'active' },
+    { id: 'u-1', name: '张三', account: 'zhangsan', email: 'zhangsan@example.com', password: '123456', role: 'pmo', status: 'active' },
+    { id: 'u-2', name: '李四', account: 'lisi', email: 'lisi@example.com', password: '123456', role: 'pm', status: 'active' },
+    { id: 'u-3', name: '王五', account: 'wangwu', email: 'wangwu@example.com', password: '123456', role: 'member', status: 'active' },
+    { id: 'u-4', name: '赵敏', account: 'zhaomin', email: 'zhaomin@example.com', password: '123456', role: 'member', status: 'active' },
   ],
   auditLogs: [],
   projects: [
@@ -73,7 +86,7 @@ const defaultState = {
       name: '财务自动化流程改造',
       description: '优化报销、预算和付款审批链路。',
       owner: 'u-2',
-      members: ['u-2', 'u-4', 'u-5'],
+      members: ['u-2', 'u-4'],
       status: 'planning',
       startDate: '2026-06-01',
       endDate: '2026-09-15',
@@ -254,9 +267,17 @@ function normalizeRole(role) {
   return 'member';
 }
 
+function defaultAccount(name = '') {
+  const compact = String(name).trim().toLowerCase().replace(/\s+/g, '');
+  const ascii = compact.replace(/[^a-z0-9._-]/g, '');
+  if (ascii) return ascii;
+  return Array.from(compact).map((char) => pinyinMap[char] || '').join('');
+}
+
 function normalizeState() {
   state.users = systemUsers().map((user) => ({
     ...user,
+    account: user.account || defaultAccount(user.name),
     role: normalizeRole(user.role),
     password: user.password || '123456',
     status: user.status || 'active',
@@ -621,15 +642,15 @@ function renderLoginPage() {
         </div>
         <form data-form="login" class="login-form" novalidate>
           <div class="field">
-            <label>账号邮箱</label>
-            <input name="email" type="email" list="login-users" placeholder="例如 zhangsan@example.com" />
+            <label>用户账号</label>
+            <input name="account" type="text" list="login-users" placeholder="例如 zhangsan" autocomplete="username" />
             <datalist id="login-users">
-              ${activeUsers.map((user) => `<option value="${escapeHtml(user.email)}">${escapeHtml(user.name)} · ${roleLabels[normalizeRole(user.role)]}</option>`).join('')}
+              ${activeUsers.map((user) => `<option value="${escapeHtml(user.account)}">${escapeHtml(user.name)} · ${roleLabels[normalizeRole(user.role)]}</option>`).join('')}
             </datalist>
           </div>
           <div class="field">
             <label>密码</label>
-            <input name="password" type="password" placeholder="请输入密码" />
+            <input name="password" type="password" placeholder="请输入密码" autocomplete="current-password" />
           </div>
           ${state.loginError ? `<p class="login-error">${escapeHtml(state.loginError)}</p>` : ''}
           <button class="button primary" type="button" data-action="login-submit" onclick="window.pmoLogin(event)">登录</button>
@@ -737,7 +758,7 @@ function renderUserManagement() {
             <div class="table-row">
               <div>
                 <strong>${escapeHtml(user.name)}</strong>
-                <p class="small">${escapeHtml(user.email || '-')}</p>
+                <p class="small">${escapeHtml(user.account || '-')} · ${escapeHtml(user.email || '-')}</p>
               </div>
               <span class="badge neutral">${roleLabels[normalizeRole(user.role)]}</span>
               <span class="small">${user.status === 'active' ? '启用' : '停用'}</span>
@@ -1216,6 +1237,7 @@ function renderUserForm(user) {
     <form data-form="user">
       <div class="form-grid">
         ${field('姓名', 'name', user.name, 'text', true)}
+        ${field('用户账号', 'account', user.account || defaultAccount(user.name), 'text')}
         ${field('邮箱', 'email', user.email || '', 'email', true)}
         ${field('登录密码', 'password', user.password || '123456', 'text', true)}
         ${isPmo() ? selectField('角色', 'role', roleOptions(role)) : `${hiddenField('role', 'member')}<div class="field"><label>角色</label><div class="readonly-field">成员</div></div>`}
@@ -1443,6 +1465,7 @@ function openUserDrawer(mode, user = null) {
     draft: structuredClone(user || {
       id: uid('u'),
       name: '',
+      account: '',
       email: '',
       password: '123456',
       role: 'member',
@@ -1573,9 +1596,13 @@ function validateSprint(sprint) {
 
 function validateUser(user) {
   if (!user.name.trim()) return '用户姓名不能为空';
+  user.account = String(user.account || defaultAccount(user.name)).trim().toLowerCase();
+  if (!user.account) return '用户账号不能为空';
   if (!user.email.trim()) return '用户邮箱不能为空';
   if (!user.password?.trim()) return '登录密码不能为空';
   if (!isPmo() && normalizeRole(user.role) !== 'member') return 'PM 只能创建或编辑成员账号';
+  const duplicateAccount = systemUsers().find((item) => item.id !== user.id && item.account === user.account);
+  if (duplicateAccount) return '用户账号不能重复';
   const duplicate = systemUsers().find((item) => item.id !== user.id && item.email === user.email);
   if (duplicate) return '用户邮箱不能重复';
   return '';
@@ -1661,16 +1688,16 @@ function saveUser(form) {
 function login(form) {
   if (!form) return;
   const data = new FormData(form);
-  const email = String(data.get('email') || '').trim().toLowerCase();
+  const account = String(data.get('account') || '').trim().toLowerCase();
   const password = String(data.get('password') || '');
-  const user = systemUsers().find((item) => item.email?.toLowerCase() === email && item.status === 'active');
-  if (!email || !password) {
-    state.loginError = '请输入完整的邮箱和密码';
+  const user = systemUsers().find((item) => item.account?.toLowerCase() === account && item.status === 'active');
+  if (!account || !password) {
+    state.loginError = '请输入完整的用户账号和密码';
     render();
     return;
   }
   if (!user || user.password !== password) {
-    state.loginError = '邮箱或密码不正确，或账号未启用';
+    state.loginError = '用户账号或密码不正确，或账号未启用';
     render();
     return;
   }
