@@ -1,0 +1,7 @@
+.DS_Store
+.figma/
+node_modules/
+dist/
+build/
+coverage/
+*.log

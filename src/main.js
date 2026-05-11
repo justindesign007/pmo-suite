@@ -1,0 +1,1694 @@
+const teams = ['产品', '研发', '测试', '设计', '运营', '数据', '安全'];
+
+const roleLabels = {
+  pmo: 'PMO',
+  project_owner: '项目 Owner',
+  member: '成员',
+  viewer: '只读访客',
+};
+
+const statusLabels = {
+  planning: '规划中',
+  active: '进行中',
+  completed: '已完成',
+  paused: '已暂停',
+  not_started: '未开始',
+  delayed: '延期',
+  draft: '待确认',
+  confirmed: '已确认',
+  in_development: '开发中',
+  in_testing: '测试中',
+};
+
+const statusTone = {
+  planning: 'neutral',
+  active: '',
+  completed: 'success',
+  paused: 'warning',
+  not_started: 'neutral',
+  delayed: 'danger',
+  draft: 'neutral',
+  confirmed: '',
+  in_development: 'warning',
+  in_testing: 'warning',
+};
+
+const defaultState = {
+  view: 'overview',
+  selectedProjectId: 'p-1',
+  selectedSprintId: 's-1',
+  selectedRequirementId: 'r-1',
+  selectedMilestoneId: 'm-1',
+  search: '',
+  projectStatus: 'all',
+  sprintStatus: 'all',
+  drawer: null,
+  toast: '',
+  users: [
+    { id: 'u-1', name: '张三', email: 'zhangsan@example.com', role: 'pmo', status: 'active' },
+    { id: 'u-2', name: '李四', email: 'lisi@example.com', role: 'project_owner', status: 'active' },
+    { id: 'u-3', name: '王五', email: 'wangwu@example.com', role: 'member', status: 'active' },
+    { id: 'u-4', name: '赵敏', email: 'zhaomin@example.com', role: 'member', status: 'active' },
+    { id: 'u-5', name: '陈晨', email: 'chenchen@example.com', role: 'viewer', status: 'active' },
+  ],
+  auditLogs: [],
+  projects: [
+    {
+      id: 'p-1',
+      name: '企业客户项目看板 MVP',
+      description: '项目、Sprint、成员和需求责任人管理。',
+      owner: 'u-1',
+      members: ['u-1', 'u-2', 'u-3'],
+      status: 'active',
+      startDate: '2026-05-01',
+      endDate: '2026-08-30',
+      goal: '让业务和研发团队在同一页面完成项目节奏对齐。',
+      teams: ['产品', '研发', '测试'],
+      createdAt: '2026-05-01',
+      updatedAt: '2026-05-11',
+    },
+    {
+      id: 'p-2',
+      name: '财务自动化流程改造',
+      description: '优化报销、预算和付款审批链路。',
+      owner: 'u-2',
+      members: ['u-2', 'u-4', 'u-5'],
+      status: 'planning',
+      startDate: '2026-06-01',
+      endDate: '2026-09-15',
+      goal: '缩短财务审批周期，降低人工核对成本。',
+      teams: ['产品', '研发', '数据'],
+      createdAt: '2026-05-04',
+      updatedAt: '2026-05-09',
+    },
+  ],
+  sprints: [
+    {
+      id: 's-1',
+      projectId: 'p-1',
+      name: 'Sprint 1 - 项目规划闭环',
+      goal: '完成项目和 Sprint 的核心规划链路。',
+      description: '覆盖项目 CRUD、Sprint CRUD、关键需求与时间轴设置。',
+      owner: 'u-3',
+      status: 'active',
+      priority: 'high',
+      startDate: '2026-05-12',
+      endDate: '2026-05-26',
+      businessGoal: '项目 Owner 可以独立完成项目计划录入。',
+      deliveryGoal: '交付单页 MVP 原型。',
+      qualityGoal: '核心字段完整，时间规则可校验。',
+      acceptanceCriteria: '可以创建项目、创建 Sprint，并配置需求、里程碑和时间轴节点。',
+      teams: ['产品', '研发', '测试'],
+      riskNote: '时间轴拖拽暂不进入第一版。',
+      createdAt: '2026-05-10',
+      updatedAt: '2026-05-11',
+    },
+  ],
+  milestones: [
+    {
+      id: 'm-1',
+      sprintId: 's-1',
+      name: '需求评审完成',
+      date: '2026-05-14',
+      owner: 'u-1',
+      status: 'completed',
+      description: '确认项目与 Sprint 的核心字段。',
+      deliverable: '需求说明稿',
+    },
+    {
+      id: 'm-2',
+      sprintId: 's-1',
+      name: 'MVP 原型确认',
+      date: '2026-05-21',
+      owner: 'u-2',
+      status: 'active',
+      description: '完成页面交互确认。',
+      deliverable: '单页原型',
+    },
+  ],
+  requirements: [
+    {
+      id: 'r-1',
+      sprintId: 's-1',
+      code: 'REQ-001',
+      title: '项目增删改查',
+      description: '支持项目 Owner 创建、编辑、删除和切换项目。',
+      priority: 'P0',
+      owner: 'u-1',
+      status: 'in_development',
+      milestoneId: 'm-2',
+      wetaskUrl: 'https://wetask.example.com/requirements/REQ-001',
+      expectedDeliveryDate: '2026-05-19',
+      acceptanceCriteria: '项目列表和项目详情实时更新。',
+    },
+    {
+      id: 'r-2',
+      sprintId: 's-1',
+      code: 'REQ-002',
+      title: 'Sprint 规划表单',
+      description: '支持目标、里程碑、关键需求、时间轴节点设置。',
+      priority: 'P0',
+      owner: 'u-3',
+      status: 'confirmed',
+      milestoneId: 'm-2',
+      wetaskUrl: 'https://wetask.example.com/requirements/REQ-002',
+      expectedDeliveryDate: '2026-05-21',
+      acceptanceCriteria: '保存前完成日期范围校验。',
+    },
+  ],
+  timelineNodes: [
+    {
+      id: 't-1',
+      sprintId: 's-1',
+      title: 'Sprint 启动会',
+      type: 'review',
+      date: '2026-05-12',
+      owner: 'u-1',
+      description: '确认范围、角色和节奏。',
+      isCritical: true,
+      status: 'completed',
+      requirementIds: ['r-1'],
+    },
+    {
+      id: 't-2',
+      sprintId: 's-1',
+      title: '需求冻结',
+      type: 'requirement',
+      date: '2026-05-15',
+      owner: 'u-1',
+      description: '冻结第一版功能范围。',
+      isCritical: true,
+      status: 'active',
+      requirementIds: ['r-1', 'r-2'],
+    },
+    {
+      id: 't-3',
+      sprintId: 's-1',
+      title: '原型确认',
+      type: 'review',
+      date: '2026-05-21',
+      owner: 'u-2',
+      description: '项目 Owner 确认 MVP。',
+      isCritical: true,
+      status: 'not_started',
+      requirementIds: ['r-2'],
+    },
+    {
+      id: 't-4',
+      sprintId: 's-1',
+      title: '发布演示',
+      type: 'release',
+      date: '2026-05-26',
+      owner: 'u-3',
+      description: '演示完整规划流程。',
+      isCritical: true,
+      status: 'not_started',
+      requirementIds: [],
+    },
+  ],
+};
+
+const storageKey = 'pmo-sprint-api-cache-v2';
+const apiClient = {
+  transport: 'rest',
+  loadState() {
+    try {
+      return JSON.parse(window.localStorage.getItem(storageKey) || 'null');
+    } catch {
+      return null;
+    }
+  },
+  saveState(nextState, event) {
+    const { drawer, toast, ...serializableState } = nextState;
+    const auditLogs = [
+      ...(serializableState.auditLogs || []),
+      {
+        id: uid('audit'),
+        at: new Date().toISOString(),
+        actor: 'system',
+        event,
+      },
+    ].slice(-100);
+    window.localStorage.setItem(storageKey, JSON.stringify({ ...serializableState, auditLogs }));
+    return auditLogs;
+  },
+};
+const savedState = apiClient.loadState();
+const state = savedState ? { ...structuredClone(defaultState), ...savedState, drawer: null, toast: '' } : structuredClone(defaultState);
+const app = document.querySelector('#app');
+
+function uid(prefix) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function escapeHtml(value = '') {
+  return String(value).replace(/[&<>"']/g, (char) => {
+    const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return map[char];
+  });
+}
+
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function dateText(value) {
+  if (!value) return '-';
+  return value.slice(5).replace('-', '/');
+}
+
+function badge(status) {
+  return `<span class="badge ${statusTone[status] || ''}">${statusLabels[status] || status || '-'}</span>`;
+}
+
+function systemUsers() {
+  return state.users || [];
+}
+
+function userRecord(value) {
+  return systemUsers().find((user) => user.id === value || user.name === value);
+}
+
+function userName(value) {
+  return userRecord(value)?.name || value || '-';
+}
+
+function userRole(value) {
+  return userRecord(value)?.role || 'viewer';
+}
+
+function userOptions(selected = '', allowedUsers = systemUsers()) {
+  return allowedUsers.map((user) => `<option value="${user.id}" ${user.id === selected || user.name === selected ? 'selected' : ''}>${user.name} · ${roleLabels[user.role]}</option>`).join('');
+}
+
+function projectMemberOptions(projectId = state.selectedProjectId, selected = '') {
+  const project = state.projects.find((item) => item.id === projectId) || currentProject();
+  const members = project?.members?.length ? project.members.map((id) => userRecord(id)).filter(Boolean) : systemUsers();
+  return userOptions(selected, members.length ? members : systemUsers());
+}
+
+function teamOptions(selected = []) {
+  return teams.map((team) => `<option value="${team}" ${selected.includes(team) ? 'selected' : ''}>${team}</option>`).join('');
+}
+
+function projectSprints(projectId = state.selectedProjectId) {
+  return state.sprints.filter((sprint) => sprint.projectId === projectId);
+}
+
+function currentProject() {
+  return state.projects.find((project) => project.id === state.selectedProjectId) || state.projects[0];
+}
+
+function currentSprint() {
+  const sprint = state.sprints.find((item) => item.id === state.selectedSprintId);
+  if (sprint && sprint.projectId === state.selectedProjectId) return sprint;
+  return projectSprints()[0];
+}
+
+function sprintChildren(sprintId) {
+  return {
+    milestones: state.milestones.filter((item) => item.sprintId === sprintId),
+    requirements: state.requirements.filter((item) => item.sprintId === sprintId),
+    timelineNodes: state.timelineNodes.filter((item) => item.sprintId === sprintId),
+  };
+}
+
+function requirementWetaskUrl(req) {
+  if (req.wetaskUrl) return req.wetaskUrl;
+  if (!req.code) return '';
+  return `https://wetask.example.com/requirements/${encodeURIComponent(req.code)}`;
+}
+
+function persistState(event = 'state.saved') {
+  const { drawer, toast, ...serializableState } = state;
+  state.auditLogs = apiClient.saveState(serializableState, event);
+}
+
+function exportBundle(format = 'csv') {
+  const bundle = {
+    projects: state.projects,
+    users: state.users,
+    sprints: state.sprints,
+    requirements: state.requirements,
+    milestones: state.milestones,
+    timelineNodes: state.timelineNodes,
+    auditLogs: state.auditLogs,
+  };
+
+  if (format === 'xls') {
+    const html = `
+      <html><head><meta charset="utf-8" /></head><body>
+      ${Object.entries(bundle)
+        .map(([name, rows]) => `
+          <table border="1">
+            <tr><th colspan="${rows[0] ? Object.keys(rows[0]).length : 1}">${escapeHtml(name)}</th></tr>
+            <tr>${rows[0] ? Object.keys(rows[0]).map((key) => `<th>${escapeHtml(key)}</th>`).join('') : '<th>empty</th>'}</tr>
+            ${rows.map((row) => `<tr>${Object.keys(rows[0] || { empty: '' }).map((key) => `<td>${escapeHtml(row?.[key] ?? '')}</td>`).join('')}</tr>`).join('')}
+          </table>
+        `).join('')}
+      </body></html>`;
+    downloadText(html, 'pmo-data.xls', 'application/vnd.ms-excel');
+    return;
+  }
+
+  const csv = serializeBundleCsv(bundle);
+  downloadText(csv, 'pmo-data.csv', 'text/csv');
+}
+
+function serializeBundleCsv(bundle) {
+  return Object.entries(bundle)
+    .map(([name, rows]) => {
+      const header = rows[0] ? Object.keys(rows[0]) : ['empty'];
+      const body = rows.map((row) => header.map((key) => csvCell(row?.[key] ?? '')).join(',')).join('\n');
+      return [`#section:${name}`, header.join(','), body].filter(Boolean).join('\n');
+    })
+    .join('\n\n');
+}
+
+function csvCell(value) {
+  const text = String(value ?? '').replace(/"/g, '""');
+  return `"${text}"`;
+}
+
+function downloadText(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function importBundle(file) {
+  const text = await file.text();
+  if (file.name.endsWith('.json')) {
+    const parsed = JSON.parse(text);
+    applyImportedBundle(parsed);
+    return;
+  }
+  const parsed = parseBundleCsv(text);
+  applyImportedBundle(parsed);
+}
+
+function parseBundleCsv(text) {
+  const sections = {};
+  let current = null;
+  text.split(/\r?\n/).forEach((line) => {
+    if (!line.trim()) return;
+    if (line.startsWith('#section:')) {
+      current = line.replace('#section:', '').trim();
+      sections[current] = [];
+      return;
+    }
+    if (!current) return;
+    const rows = sections[current];
+    if (!rows.length) {
+      rows.push(line.split(',').map((cell) => cell.replace(/^"|"$/g, '').replace(/""/g, '"')));
+      return;
+    }
+    const header = rows[0];
+    const values = line.match(/"([^"]*(?:""[^"]*)*)"/g)?.map((cell) => cell.slice(1, -1).replace(/""/g, '"')) || [];
+    const obj = {};
+    header.forEach((key, index) => {
+      obj[key] = values[index] || '';
+    });
+    rows.push(obj);
+  });
+  return Object.fromEntries(Object.entries(sections).map(([key, rows]) => [key, rows.slice(1)]));
+}
+
+function applyImportedBundle(bundle) {
+  const next = {
+    projects: (bundle.projects || []).map((project) => ({
+      ...project,
+      members: splitList(project.members),
+      teams: splitList(project.teams),
+    })),
+    users: bundle.users || state.users,
+    sprints: (bundle.sprints || []).map((sprint) => ({
+      ...sprint,
+      teams: splitList(sprint.teams),
+    })),
+    requirements: bundle.requirements || [],
+    milestones: bundle.milestones || [],
+    timelineNodes: (bundle.timelineNodes || []).map((node) => ({
+      ...node,
+      requirementIds: splitList(node.requirementIds),
+      isCritical: node.isCritical === true || node.isCritical === 'true',
+    })),
+    auditLogs: bundle.auditLogs || [],
+  };
+  state.projects = next.projects;
+  state.users = next.users;
+  state.sprints = next.sprints;
+  state.requirements = next.requirements;
+  state.milestones = next.milestones;
+  state.timelineNodes = next.timelineNodes;
+  state.auditLogs = next.auditLogs;
+  state.selectedProjectId = state.projects[0]?.id || '';
+  state.selectedSprintId = projectSprints()[0]?.id || '';
+  state.view = 'overview';
+  persistState('data.imported');
+  render();
+}
+
+function splitList(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  return String(value).split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+function firstProjectMember(projectId = state.selectedProjectId) {
+  const project = state.projects.find((item) => item.id === projectId) || currentProject();
+  return project?.members?.[0] || systemUsers()[0]?.id || 'u-1';
+}
+
+function filteredProjects() {
+  const term = state.search.trim().toLowerCase();
+  return state.projects.filter((project) => {
+    const matchesStatus = state.projectStatus === 'all' || project.status === state.projectStatus;
+    const matchesSprintStatus = state.sprintStatus === 'all' || projectSprints(project.id).some((sprint) => sprint.status === state.sprintStatus);
+    const sprintNames = projectSprints(project.id).map((sprint) => sprint.name).join(' ');
+    const matchesSearch = !term || `${project.name} ${project.owner} ${project.goal} ${sprintNames}`.toLowerCase().includes(term);
+    return matchesStatus && matchesSprintStatus && matchesSearch;
+  });
+}
+
+function filteredSprints(projectId) {
+  const term = state.search.trim().toLowerCase();
+  return projectSprints(projectId).filter((sprint) => {
+    const children = sprintChildren(sprint.id);
+    const reqText = children.requirements.map((req) => `${req.code} ${req.title}`).join(' ');
+    const matchesStatus = state.sprintStatus === 'all' || sprint.status === state.sprintStatus;
+    const matchesSearch = !term || `${sprint.name} ${sprint.goal} ${sprint.owner} ${reqText}`.toLowerCase().includes(term);
+    return matchesStatus && matchesSearch;
+  });
+}
+
+function ensureSelection() {
+  if (!currentProject()) {
+    state.selectedProjectId = state.projects[0]?.id || '';
+  }
+  const sprint = currentSprint();
+  state.selectedSprintId = sprint?.id || '';
+}
+
+function render() {
+  ensureSelection();
+  const isDrilldown = ['sprintDetail', 'requirementDetail', 'milestoneDetail'].includes(state.view);
+
+  app.innerHTML = `
+    <section class="app-frame ${isDrilldown ? 'drilldown-frame' : ''}">
+      ${isDrilldown ? '' : renderSystemSidebar()}
+      <section class="workspace">
+        ${renderTopbar()}
+        ${state.view === 'sprintDetail' ? renderSprintPage() : state.view === 'users' ? renderUserManagement() : state.view === 'requirementDetail' ? renderRequirementPage() : state.view === 'milestoneDetail' ? renderMilestonePage() : renderProjectOverview()}
+      </section>
+    </section>
+    ${renderDrawer()}
+    <input id="import-file" type="file" accept=".csv,.xls,.xlsx,.json,text/csv,application/json" hidden />
+    <div class="drawer-backdrop ${state.drawer ? 'open' : ''}" data-action="close-drawer"></div>
+    <div class="toast ${state.toast ? 'show' : ''}">${escapeHtml(state.toast)}</div>
+  `;
+}
+
+function renderSystemSidebar() {
+  const activeProjects = state.projects.filter((project) => project.status === 'active').length;
+  return `
+    <aside class="system-sidebar">
+      <div class="system-brand">
+        <div class="system-logo" aria-hidden="true">
+          <span class="logo-mark"><i></i><i></i><i></i></span>
+        </div>
+        <div>
+          <strong>PMO Suite</strong>
+          <span>Delivery Office</span>
+        </div>
+      </div>
+      <nav class="system-nav" aria-label="系统菜单">
+        <p>工作台</p>
+        <button class="system-nav-item ${state.view !== 'users' ? 'active' : ''}" data-action="open-overview">项目总览 <span>${state.projects.length}</span></button>
+        <button class="system-nav-item ${state.view === 'users' ? 'active' : ''}" data-action="open-users">用户管理 <span>${systemUsers().length}</span></button>
+      </nav>
+      <div class="system-sidebar-foot">
+        <span>进行中项目</span>
+        <strong>${activeProjects}</strong>
+      </div>
+    </aside>
+  `;
+}
+
+function renderTopbar() {
+  return `
+    <header class="topbar">
+      <div>
+        <p class="breadcrumb">PMO / ${state.view === 'sprintDetail' ? 'Sprint Detail' : state.view === 'users' ? 'Users' : state.view === 'requirementDetail' ? 'Requirement' : state.view === 'milestoneDetail' ? 'Milestone' : 'Dashboard'}</p>
+      </div>
+      <div class="toolbar">
+        <input class="control" data-action="search" value="${escapeHtml(state.search)}" placeholder="搜索项目、Sprint、需求" />
+        <details class="toolbar-menu">
+          <summary class="button">筛选</summary>
+          <div class="toolbar-menu-panel">
+            <label>项目状态</label>
+            <select class="control" data-action="project-filter">
+              <option value="all" ${state.projectStatus === 'all' ? 'selected' : ''}>全部项目</option>
+              <option value="planning" ${state.projectStatus === 'planning' ? 'selected' : ''}>规划中</option>
+              <option value="active" ${state.projectStatus === 'active' ? 'selected' : ''}>进行中</option>
+              <option value="completed" ${state.projectStatus === 'completed' ? 'selected' : ''}>已完成</option>
+              <option value="paused" ${state.projectStatus === 'paused' ? 'selected' : ''}>已暂停</option>
+            </select>
+            <label>Sprint 状态</label>
+            <select class="control" data-action="sprint-filter">
+              <option value="all" ${state.sprintStatus === 'all' ? 'selected' : ''}>全部 Sprint</option>
+              <option value="not_started" ${state.sprintStatus === 'not_started' ? 'selected' : ''}>未开始</option>
+              <option value="active" ${state.sprintStatus === 'active' ? 'selected' : ''}>进行中</option>
+              <option value="completed" ${state.sprintStatus === 'completed' ? 'selected' : ''}>已完成</option>
+              <option value="delayed" ${state.sprintStatus === 'delayed' ? 'selected' : ''}>延期</option>
+            </select>
+          </div>
+        </details>
+        <details class="toolbar-menu">
+          <summary class="button">更多</summary>
+          <div class="toolbar-menu-panel compact">
+            <button class="link-button" data-action="export-csv">导出 CSV</button>
+            <button class="link-button" data-action="export-xls">导出 Excel</button>
+            <button class="link-button" data-action="import-data">导入</button>
+          </div>
+        </details>
+        <button class="button primary" data-action="new-project">+ 新建项目</button>
+      </div>
+    </header>
+  `;
+}
+
+function renderUserManagement() {
+  return `
+    <main class="project-overview">
+      <section class="panel card">
+        <div class="section-head">
+          <div>
+            <h2>系统用户</h2>
+            <p class="small">系统级用户与权限角色。</p>
+          </div>
+          <button class="button primary" data-action="new-user">+ 新建用户</button>
+        </div>
+        <div class="table-list">
+          ${systemUsers().map((user) => `
+            <div class="table-row">
+              <div>
+                <strong>${escapeHtml(user.name)}</strong>
+                <p class="small">${escapeHtml(user.email || '-')}</p>
+              </div>
+              <span class="badge neutral">${roleLabels[user.role]}</span>
+              <span class="small">${user.status === 'active' ? '启用' : '停用'}</span>
+              <div class="card-actions">
+                <button class="link-button" data-action="edit-user" data-id="${user.id}">编辑</button>
+                <button class="link-button danger" data-action="delete-user" data-id="${user.id}">删除</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+function renderSidebar() {
+  const projects = filteredProjects();
+  return `
+    <aside class="panel sidebar">
+      <div class="section-head">
+        <div>
+          <h2>项目列表</h2>
+          <p class="small">共 ${projects.length} 个项目</p>
+        </div>
+      </div>
+      <div class="project-list">
+        ${projects.length ? projects.map(renderProjectCard).join('') : '<div class="empty-state">暂无匹配项目</div>'}
+      </div>
+    </aside>
+  `;
+}
+
+function renderProjectOverview() {
+  const projects = filteredProjects();
+  return `
+    <main class="project-overview">
+      <section class="project-dashboard-list">
+        ${projects.length ? projects.map(renderProjectDashboardCard).join('') : '<div class="panel empty-state">暂无匹配项目</div>'}
+      </section>
+    </main>
+  `;
+}
+
+function renderProjectDashboardCard(project) {
+  const allSprints = projectSprints(project.id).sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const visibleSprints = filteredSprints(project.id);
+  const activeSprint = allSprints.find((sprint) => sprint.status === 'active');
+  const otherSprints = visibleSprints.filter((sprint) => sprint.id !== activeSprint?.id);
+  const requirementsCount = allSprints.reduce((sum, sprint) => sum + sprintChildren(sprint.id).requirements.length, 0);
+  const delayedCount = allSprints.filter((sprint) => sprint.status === 'delayed').length;
+  const memberCount = project.members?.length || 0;
+
+  return `
+    <article class="project-shell panel">
+      <section class="project-panel">
+        <div class="project-panel-head">
+        <div class="project-title-block">
+          <div class="rail-mark">${project.name.slice(0, 1)}</div>
+          <div>
+            <p class="eyebrow">Project</p>
+            <div class="project-name-row">
+              <h3>${escapeHtml(project.name)}</h3>
+              ${badge(project.status)}
+              <span class="${delayedCount ? 'danger-text' : 'status-good'}">${delayedCount ? `${delayedCount} 个延期` : '节奏正常'}</span>
+            </div>
+          </div>
+        </div>
+          <div class="card-actions">
+            <button class="button" data-action="edit-project" data-id="${project.id}">编辑项目</button>
+            <button class="button primary" data-action="new-sprint" data-id="${project.id}">+ Sprint</button>
+            <details class="advanced-menu">
+              <summary aria-label="高级操作">•••</summary>
+              <div class="advanced-menu-panel">
+                <button class="link-button danger" data-action="delete-project" data-id="${project.id}">删除项目</button>
+              </div>
+            </details>
+          </div>
+        </div>
+        <p class="project-summary">${escapeHtml(project.description || project.goal)}</p>
+        <div class="project-compact-meta">
+          <span>Owner ${escapeHtml(userName(project.owner))}</span>
+          <span>${dateText(project.startDate)} - ${dateText(project.endDate)}</span>
+          <span>${allSprints.length} 个 Sprint</span>
+          <span>${memberCount} 个成员</span>
+          <span>${requirementsCount} 条需求</span>
+        </div>
+        ${activeSprint ? renderActiveSprint(activeSprint) : renderNoActiveSprint(project)}
+        <div class="other-sprints">
+          <div class="section-head compact">
+            <h3>其他 Sprint</h3>
+            <span class="small">${otherSprints.length} 个</span>
+          </div>
+          <div class="sprint-row-list">
+            ${otherSprints.length ? otherSprints.map(renderSprintRow).join('') : '<div class="timeline-empty">暂无其他 Sprint</div>'}
+          </div>
+        </div>
+      </section>
+    </article>
+  `;
+}
+
+function renderActiveSprint(sprint) {
+  const children = sprintChildren(sprint.id);
+  return `
+    <section class="active-sprint-card" data-action="open-sprint" data-id="${sprint.id}" tabindex="0">
+      <div class="active-sprint-copy">
+        <div class="card-title-row">
+          <div>
+            <p class="eyebrow">当前进行中 Sprint</p>
+            <h3>${escapeHtml(sprint.name)}</h3>
+          </div>
+          ${badge(sprint.status)}
+        </div>
+        <p>${escapeHtml(sprint.goal)}</p>
+      </div>
+      <div class="active-sprint-metrics">
+        <div><span>周期</span><strong>${dateText(sprint.startDate)} - ${dateText(sprint.endDate)}</strong></div>
+        <div><span>需求</span><strong>${children.requirements.length} 条</strong></div>
+        <div><span>里程碑</span><strong>${children.milestones.length} 个</strong></div>
+      </div>
+      <div class="card-actions">
+        <button class="link-button" data-action="open-sprint" data-id="${sprint.id}">进入详情</button>
+        <button class="link-button" data-action="edit-sprint" data-id="${sprint.id}">编辑</button>
+      </div>
+    </section>
+  `;
+}
+
+function renderNoActiveSprint(project) {
+  return `
+    <section class="active-sprint-card empty-active">
+      <div>
+        <p class="eyebrow">当前进行中 Sprint</p>
+        <h3>暂无进行中的 Sprint</h3>
+        <p class="small">可以从下方列表进入已有 Sprint，或新建一个 Sprint。</p>
+      </div>
+      <button class="button primary" data-action="new-sprint" data-id="${project.id}">+ 新建 Sprint</button>
+    </section>
+  `;
+}
+
+function renderSprintRow(sprint) {
+  const children = sprintChildren(sprint.id);
+  return `
+    <div class="sprint-row" data-action="open-sprint" data-id="${sprint.id}" tabindex="0">
+      <div>
+        <strong>${escapeHtml(sprint.name)}</strong>
+        <p class="small">${dateText(sprint.startDate)} - ${dateText(sprint.endDate)} · ${children.requirements.length} 条需求 · ${children.milestones.length} 个里程碑</p>
+      </div>
+      <div class="sprint-row-actions">
+        ${badge(sprint.status)}
+        <button class="link-button" data-action="edit-sprint" data-id="${sprint.id}">编辑</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderMain(project) {
+  const sprints = filteredSprints(project.id);
+  const delayedCount = sprints.filter((sprint) => sprint.status === 'delayed').length;
+  return `
+    <main class="main">
+      <section class="panel card">
+        <div class="section-head">
+          <div>
+            <h2>Sprint 管理</h2>
+            <p class="small">当前项目下的 Sprint 列表。单击 Sprint 进入二级详情页。</p>
+          </div>
+          <span class="badge ${delayedCount ? 'danger' : 'success'}">${delayedCount ? `${delayedCount} 个延期` : '节奏正常'}</span>
+        </div>
+        <div class="sprint-list overview-sprint-list">
+          ${sprints.length ? sprints.map(renderSprintCard).join('') : '<div class="empty-state">暂无 Sprint，点击「新建 Sprint」开始规划。</div>'}
+        </div>
+      </section>
+    </main>
+  `;
+}
+
+function renderSprintCard(sprint) {
+  const children = sprintChildren(sprint.id);
+  return `
+    <article class="sprint-card ${sprint.id === state.selectedSprintId ? 'active' : ''}" data-action="open-sprint" data-id="${sprint.id}" tabindex="0">
+      <div class="card-title-row">
+        <div>
+          <h3>${escapeHtml(sprint.name)}</h3>
+        <p class="small">${dateText(sprint.startDate)} - ${dateText(sprint.endDate)} · Owner ${escapeHtml(userName(sprint.owner))}</p>
+        </div>
+        ${badge(sprint.status)}
+      </div>
+      <div class="goal-box">${escapeHtml(sprint.goal)}</div>
+      <div class="meta-grid">
+        <div class="meta-item"><span>里程碑</span><strong>${children.milestones.length} 个</strong></div>
+        <div class="meta-item"><span>需求</span><strong>${children.requirements.length} 条</strong></div>
+        <div class="meta-item"><span>时间节点</span><strong>${children.timelineNodes.length} 个</strong></div>
+        <div class="meta-item"><span>优先级</span><strong>${sprint.priority || '-'}</strong></div>
+      </div>
+      <div class="card-actions" style="margin-top: 14px;">
+        <button class="link-button" data-action="open-sprint" data-id="${sprint.id}">进入详情</button>
+        <button class="link-button" data-action="edit-sprint" data-id="${sprint.id}">编辑</button>
+        <button class="link-button danger" data-action="delete-sprint" data-id="${sprint.id}">删除</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderSprintPage() {
+  const sprint = currentSprint();
+  const project = currentProject();
+  if (!sprint || !project) {
+    state.view = 'overview';
+    return '';
+  }
+
+  return `
+    <section class="detail-page">
+      <div class="detail-nav">
+        <button class="button" data-action="back-overview">← 返回项目 Sprint 列表</button>
+        <div class="small">当前项目：${escapeHtml(project.name)}</div>
+      </div>
+      ${renderSprintDetail(sprint)}
+    </section>
+  `;
+}
+
+function renderSprintDetail(sprint) {
+  const { milestones, requirements, timelineNodes } = sprintChildren(sprint.id);
+  return `
+    <section class="panel hero sprint-hero">
+      <div class="hero-content">
+        <div class="hero-title">
+          <div>
+            <p class="eyebrow">Sprint 二级详情</p>
+            <div class="sprint-title-row">
+              <h2>${escapeHtml(sprint.name)}</h2>
+              ${badge(sprint.status)}
+            </div>
+            <p class="muted">${escapeHtml(sprint.description || sprint.goal)}</p>
+          </div>
+          <div class="hero-actions">
+            <button class="button" data-action="edit-sprint" data-id="${sprint.id}">编辑 Sprint</button>
+            <button class="button danger" data-action="delete-sprint" data-id="${sprint.id}">删除 Sprint</button>
+          </div>
+        </div>
+        <div class="summary-grid">
+          <div class="summary-card"><span>Sprint Owner</span><strong>${escapeHtml(userName(sprint.owner))}</strong></div>
+          <div class="summary-card"><span>Sprint 状态</span><strong>${statusLabels[sprint.status]}</strong></div>
+          <div class="summary-card"><span>Sprint 周期</span><strong>${dateText(sprint.startDate)} - ${dateText(sprint.endDate)}</strong></div>
+          <div class="summary-card"><span>优先级</span><strong>${escapeHtml(sprint.priority || '-')}</strong></div>
+        </div>
+        <div class="goal-box sprint-goal-box">
+          <strong>目标：</strong>${escapeHtml(sprint.goal)}<br />
+          <strong>验收：</strong>${escapeHtml(sprint.acceptanceCriteria || '暂未填写')}
+        </div>
+      </div>
+    </section>
+    <section class="panel card plan-card">
+      <div class="section-head">
+        <div>
+          <h2>计划与里程碑</h2>
+          <p class="small">时间轴和里程碑在同一卡片中配置与查看。</p>
+        </div>
+        <div class="card-actions">
+          <button class="button" data-action="add-milestone" data-id="${sprint.id}">+ 里程碑</button>
+          <button class="button" data-action="add-timeline-node" data-id="${sprint.id}">+ 时间节点</button>
+        </div>
+      </div>
+      ${renderTimeline(sprint, timelineNodes)}
+      <div class="milestone-strip">
+        ${milestones.length ? milestones.map(renderMilestone).join('') : '<div class="timeline-empty">暂无里程碑，点击右上角按钮添加。</div>'}
+      </div>
+    </section>
+    <section class="panel card">
+      <div class="section-head">
+        <h2>关键需求</h2>
+        <span class="small">${requirements.length} 条</span>
+      </div>
+      <div class="mini-list">
+        ${requirements.length ? requirements.map(renderRequirement).join('') : '<div class="timeline-empty">暂无关键需求</div>'}
+      </div>
+    </section>
+  `;
+}
+
+function renderRequirementPage() {
+  const req = state.requirements.find((item) => item.id === state.selectedRequirementId);
+  const sprint = state.sprints.find((item) => item.id === req?.sprintId);
+  if (!req || !sprint) {
+    state.view = 'sprintDetail';
+    return '';
+  }
+  const wetaskUrl = requirementWetaskUrl(req);
+  return `
+    <section class="detail-page">
+      <div class="detail-nav">
+        <button class="button" data-action="back-sprint" data-id="${sprint.id}">← 返回 Sprint</button>
+        <div class="small">${escapeHtml(sprint.name)}</div>
+      </div>
+      <section class="panel hero">
+        <div class="hero-content">
+          <div class="hero-title">
+            <div>
+              <p class="eyebrow">${escapeHtml(req.code)}</p>
+              <h2>${escapeHtml(req.title)}</h2>
+              <p class="muted">${escapeHtml(req.description || '暂无描述')}</p>
+            </div>
+            <button class="button" data-action="edit-sprint" data-id="${sprint.id}">编辑 Sprint</button>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-card"><span>负责人</span><strong>${escapeHtml(userName(req.owner))}</strong></div>
+            <div class="summary-card"><span>状态</span><strong>${statusLabels[req.status]}</strong></div>
+            <div class="summary-card"><span>优先级</span><strong>${req.priority}</strong></div>
+            <div class="summary-card"><span>交付时间</span><strong>${dateText(req.expectedDeliveryDate)}</strong></div>
+          </div>
+          <div class="goal-box sprint-goal-box">
+            <strong>验收标准：</strong>${escapeHtml(req.acceptanceCriteria || '暂未填写')}
+          </div>
+          <div class="detail-link-row">
+            ${wetaskUrl ? `<a class="button" href="${escapeHtml(wetaskUrl)}" target="_blank" rel="noreferrer">打开 WeTask 需求</a>` : '<span class="small">未绑定 WeTask 需求链接</span>'}
+          </div>
+        </div>
+      </section>
+    </section>
+  `;
+}
+
+function renderMilestonePage() {
+  const milestone = state.milestones.find((item) => item.id === state.selectedMilestoneId);
+  const sprint = state.sprints.find((item) => item.id === milestone?.sprintId);
+  if (!milestone || !sprint) {
+    state.view = 'sprintDetail';
+    return '';
+  }
+  return `
+    <section class="detail-page">
+      <div class="detail-nav">
+        <button class="button" data-action="back-sprint" data-id="${sprint.id}">← 返回 Sprint</button>
+        <div class="small">${escapeHtml(sprint.name)}</div>
+      </div>
+      <section class="panel hero">
+        <div class="hero-content">
+          <div class="hero-title">
+            <div>
+              <p class="eyebrow">Milestone</p>
+              <h2>${escapeHtml(milestone.name)}</h2>
+              <p class="muted">${escapeHtml(milestone.description || '暂无描述')}</p>
+            </div>
+            <button class="button" data-action="edit-sprint" data-id="${sprint.id}">编辑 Sprint</button>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-card"><span>负责人</span><strong>${escapeHtml(userName(milestone.owner))}</strong></div>
+            <div class="summary-card"><span>状态</span><strong>${statusLabels[milestone.status]}</strong></div>
+            <div class="summary-card"><span>日期</span><strong>${dateText(milestone.date)}</strong></div>
+            <div class="summary-card"><span>交付物</span><strong>${escapeHtml(milestone.deliverable || '-')}</strong></div>
+          </div>
+        </div>
+      </section>
+    </section>
+  `;
+}
+
+function renderTimeline(sprint, nodes) {
+  const sorted = [...nodes].sort((a, b) => a.date.localeCompare(b.date));
+  if (!sorted.length) return '<div class="timeline-empty">暂无时间节点</div>';
+
+  return `
+    <div class="timeline">
+      <div class="timeline-line"></div>
+      <div class="timeline-track">
+        ${sorted.map((node) => `
+          <div class="timeline-node ${node.status}">
+            <div class="timeline-dot"></div>
+            <div class="timeline-card">
+              <strong>${escapeHtml(node.title)}</strong>
+              <span>${dateText(node.date)} · ${escapeHtml(node.owner || '-')}</span>
+              <span>${node.isCritical ? '关键节点' : '普通节点'} · ${statusLabels[node.status]}</span>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderRequirement(req) {
+  const wetaskUrl = requirementWetaskUrl(req);
+  return `
+    <div class="mini-item" data-action="open-requirement" data-id="${req.id}" tabindex="0">
+      <div class="mini-item-head">
+        <strong>${escapeHtml(req.code)} · ${escapeHtml(req.title)}</strong>
+        <span class="badge ${req.priority === 'P0' ? 'danger' : req.priority === 'P1' ? 'warning' : 'neutral'}">${req.priority}</span>
+      </div>
+      <p class="small">${escapeHtml(req.description || '暂无描述')}</p>
+      <div class="mini-item-foot">
+        <p class="small">Owner ${escapeHtml(userName(req.owner || '-'))} · ${statusLabels[req.status]} · 交付 ${dateText(req.expectedDeliveryDate)}</p>
+        ${wetaskUrl ? `<a class="external-link" href="${escapeHtml(wetaskUrl)}" target="_blank" rel="noreferrer" onclick="event.stopPropagation()">WeTask 需求</a>` : '<span class="small">未绑定 WeTask</span>'}
+      </div>
+    </div>
+  `;
+}
+
+function renderMilestone(item) {
+  return `
+    <div class="mini-item milestone-item" data-action="open-milestone" data-id="${item.id}" tabindex="0">
+      <div class="mini-item-head">
+        <strong>${escapeHtml(item.name)}</strong>
+        ${badge(item.status)}
+      </div>
+      <p class="small">${dateText(item.date)} · Owner ${escapeHtml(userName(item.owner || '-'))}</p>
+      <p class="small">交付物：${escapeHtml(item.deliverable || '暂未填写')}</p>
+    </div>
+  `;
+}
+
+function renderNoSprint() {
+  return '<section class="panel card"><div class="empty-state">当前项目暂无 Sprint。</div></section>';
+}
+
+function renderEmptyWorkspace() {
+  return '<main class="panel card"><div class="empty-state">暂无项目，请先新建项目。</div></main>';
+}
+
+function renderDrawer() {
+  if (!state.drawer) return '<aside class="drawer"></aside>';
+  const { type, mode, draft } = state.drawer;
+  const title = `${mode === 'create' ? '新建' : '编辑'}${type === 'project' ? '项目' : type === 'user' ? '用户' : 'Sprint'}`;
+  return `
+    <aside class="drawer open">
+      <div class="drawer-inner">
+        <div class="drawer-header">
+          <div>
+            <p class="eyebrow">PMO 原型表单</p>
+            <h2>${title}</h2>
+          </div>
+          <button class="button ghost" data-action="close-drawer">关闭</button>
+        </div>
+        ${type === 'project' ? renderProjectForm(draft) : type === 'user' ? renderUserForm(draft) : renderSprintForm(draft)}
+      </div>
+    </aside>
+  `;
+}
+
+function renderProjectForm(project) {
+  return `
+    <form data-form="project">
+      <div class="form-grid">
+        ${field('项目名称', 'name', project.name, 'text', true)}
+        ${selectField('项目 Owner', 'owner', userOptions(project.owner))}
+        ${selectField('项目状态', 'status', projectStatusOptions(project.status))}
+        ${field('开始日期', 'startDate', project.startDate, 'date', true)}
+        ${field('结束日期', 'endDate', project.endDate, 'date', true)}
+        ${selectField('参与团队', 'teams', teamOptions(project.teams), true)}
+        ${textareaField('项目目标', 'goal', project.goal, true)}
+        ${textareaField('项目描述', 'description', project.description)}
+      </div>
+      ${renderRepeatSection('members', '项目成员', project.members || [], renderMemberForm)}
+      ${formFooter()}
+    </form>
+  `;
+}
+
+function renderUserForm(user) {
+  return `
+    <form data-form="user">
+      <div class="form-grid">
+        ${field('姓名', 'name', user.name, 'text', true)}
+        ${field('邮箱', 'email', user.email || '', 'email', true)}
+        ${selectField('角色', 'role', roleOptions(user.role))}
+        ${selectField('状态', 'status', userStatusOptions(user.status))}
+      </div>
+      ${formFooter()}
+    </form>
+  `;
+}
+
+function renderSprintForm(sprint) {
+  return `
+    <form data-form="sprint">
+      <div class="form-grid">
+        ${field('Sprint 名称', 'name', sprint.name, 'text', true)}
+        ${selectField('Sprint Owner', 'owner', projectMemberOptions(sprint.projectId, sprint.owner))}
+        ${selectField('Sprint 状态', 'status', sprintStatusOptions(sprint.status))}
+        ${selectField('优先级', 'priority', priorityOptions(sprint.priority))}
+        ${field('开始日期', 'startDate', sprint.startDate, 'date', true)}
+        ${field('结束日期', 'endDate', sprint.endDate, 'date', true)}
+        ${selectField('参与团队', 'teams', teamOptions(sprint.teams), true)}
+        ${textareaField('Sprint 目标', 'goal', sprint.goal, true)}
+        ${textareaField('业务目标', 'businessGoal', sprint.businessGoal)}
+        ${textareaField('交付目标', 'deliveryGoal', sprint.deliveryGoal)}
+        ${textareaField('质量目标', 'qualityGoal', sprint.qualityGoal)}
+        ${textareaField('验收标准', 'acceptanceCriteria', sprint.acceptanceCriteria)}
+        ${textareaField('风险说明', 'riskNote', sprint.riskNote)}
+      </div>
+      ${renderRepeatSection('requirements', '关键需求', sprint.requirements, renderRequirementForm)}
+      ${renderRepeatSection('milestones', '里程碑', sprint.milestones, renderMilestoneForm)}
+      ${renderRepeatSection('timelineNodes', '时间轴节点', sprint.timelineNodes, renderTimelineNodeForm)}
+      ${formFooter()}
+    </form>
+  `;
+}
+
+function field(label, name, value = '', type = 'text', required = false) {
+  return `<div class="field"><label>${label}</label><input name="${name}" type="${type}" value="${escapeHtml(value)}" ${required ? 'required' : ''} /></div>`;
+}
+
+function textareaField(label, name, value = '', required = false) {
+  return `<div class="field full"><label>${label}</label><textarea name="${name}" ${required ? 'required' : ''}>${escapeHtml(value || '')}</textarea></div>`;
+}
+
+function selectField(label, name, options, multiple = false) {
+  return `<div class="field ${multiple ? 'full' : ''}"><label>${label}</label><select name="${name}" ${multiple ? 'multiple size="4"' : ''}>${options}</select></div>`;
+}
+
+function projectStatusOptions(selected) {
+  return ['planning', 'active', 'completed', 'paused'].map((status) => `<option value="${status}" ${selected === status ? 'selected' : ''}>${statusLabels[status]}</option>`).join('');
+}
+
+function roleOptions(selected) {
+  return ['pmo', 'project_owner', 'member', 'viewer'].map((role) => `<option value="${role}" ${selected === role ? 'selected' : ''}>${roleLabels[role]}</option>`).join('');
+}
+
+function userStatusOptions(selected) {
+  return ['active', 'paused'].map((status) => `<option value="${status}" ${selected === status ? 'selected' : ''}>${status === 'active' ? '启用' : '停用'}</option>`).join('');
+}
+
+function sprintStatusOptions(selected) {
+  return ['not_started', 'active', 'completed', 'paused', 'delayed'].map((status) => `<option value="${status}" ${selected === status ? 'selected' : ''}>${statusLabels[status]}</option>`).join('');
+}
+
+function priorityOptions(selected = 'medium') {
+  return ['high', 'medium', 'low'].map((priority) => `<option value="${priority}" ${selected === priority ? 'selected' : ''}>${priority}</option>`).join('');
+}
+
+function renderRepeatSection(key, title, items, renderer) {
+  return `
+    <section class="form-section">
+      <div class="form-section-title">
+        <h3>${title}</h3>
+        <button type="button" class="button" data-action="add-repeat" data-key="${key}">+ 添加</button>
+      </div>
+      <div class="repeat-list">
+        ${items.length ? items.map((item, index) => renderer(item, index)).join('') : `<div class="timeline-empty">暂无${title}</div>`}
+      </div>
+    </section>
+  `;
+}
+
+function renderMemberForm(member, index) {
+  return `
+    <div class="repeat-card compact-repeat">
+      <div class="form-grid">
+        ${field('成员姓名', `members.${index}.name`, typeof member === 'string' ? member : member.name, 'text', true)}
+        <div class="field repeat-remove-field">
+          <label>&nbsp;</label>
+          <button type="button" class="button danger" data-action="remove-repeat" data-key="members" data-index="${index}">删除成员</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderRequirementForm(item, index) {
+  const sprintProjectId = state.drawer?.draft?.projectId || state.selectedProjectId;
+  return `
+    <div class="repeat-card">
+      <div class="repeat-card-head">
+        <strong>需求 ${index + 1}</strong>
+        <button type="button" class="link-button danger" data-action="remove-repeat" data-key="requirements" data-index="${index}">删除</button>
+      </div>
+      <div class="form-grid">
+        ${field('需求编号', `requirements.${index}.code`, item.code, 'text', true)}
+        ${field('需求标题', `requirements.${index}.title`, item.title, 'text', true)}
+        ${selectField('优先级', `requirements.${index}.priority`, ['P0', 'P1', 'P2', 'P3'].map((p) => `<option value="${p}" ${item.priority === p ? 'selected' : ''}>${p}</option>`).join(''))}
+        ${selectField('负责人', `requirements.${index}.owner`, projectMemberOptions(sprintProjectId, item.owner))}
+        ${selectField('状态', `requirements.${index}.status`, requirementStatusOptions(item.status))}
+        ${field('预期交付时间', `requirements.${index}.expectedDeliveryDate`, item.expectedDeliveryDate, 'date')}
+        ${field('WeTask 链接', `requirements.${index}.wetaskUrl`, item.wetaskUrl || '', 'url')}
+        ${textareaField('需求描述', `requirements.${index}.description`, item.description)}
+        ${textareaField('验收标准', `requirements.${index}.acceptanceCriteria`, item.acceptanceCriteria)}
+      </div>
+    </div>
+  `;
+}
+
+function requirementStatusOptions(selected) {
+  return ['draft', 'confirmed', 'in_development', 'in_testing', 'completed'].map((status) => `<option value="${status}" ${selected === status ? 'selected' : ''}>${statusLabels[status]}</option>`).join('');
+}
+
+function renderMilestoneForm(item, index) {
+  const sprintProjectId = state.drawer?.draft?.projectId || state.selectedProjectId;
+  return `
+    <div class="repeat-card">
+      <div class="repeat-card-head">
+        <strong>里程碑 ${index + 1}</strong>
+        <button type="button" class="link-button danger" data-action="remove-repeat" data-key="milestones" data-index="${index}">删除</button>
+      </div>
+      <div class="form-grid">
+        ${field('里程碑名称', `milestones.${index}.name`, item.name, 'text', true)}
+        ${field('里程碑日期', `milestones.${index}.date`, item.date, 'date', true)}
+        ${selectField('负责人', `milestones.${index}.owner`, projectMemberOptions(sprintProjectId, item.owner))}
+        ${selectField('状态', `milestones.${index}.status`, sprintStatusOptions(item.status))}
+        ${field('交付物', `milestones.${index}.deliverable`, item.deliverable)}
+        ${textareaField('描述', `milestones.${index}.description`, item.description)}
+      </div>
+    </div>
+  `;
+}
+
+function renderTimelineNodeForm(item, index) {
+  const sprintProjectId = state.drawer?.draft?.projectId || state.selectedProjectId;
+  return `
+    <div class="repeat-card">
+      <div class="repeat-card-head">
+        <strong>节点 ${index + 1}</strong>
+        <button type="button" class="link-button danger" data-action="remove-repeat" data-key="timelineNodes" data-index="${index}">删除</button>
+      </div>
+      <div class="form-grid">
+        ${field('节点名称', `timelineNodes.${index}.title`, item.title, 'text', true)}
+        ${field('节点日期', `timelineNodes.${index}.date`, item.date, 'date', true)}
+        ${selectField('节点类型', `timelineNodes.${index}.type`, timelineTypeOptions(item.type))}
+        ${selectField('负责人', `timelineNodes.${index}.owner`, projectMemberOptions(sprintProjectId, item.owner))}
+        ${selectField('状态', `timelineNodes.${index}.status`, sprintStatusOptions(item.status))}
+        ${selectField('是否关键节点', `timelineNodes.${index}.isCritical`, `<option value="true" ${item.isCritical ? 'selected' : ''}>是</option><option value="false" ${!item.isCritical ? 'selected' : ''}>否</option>`)}
+        ${textareaField('说明', `timelineNodes.${index}.description`, item.description)}
+      </div>
+    </div>
+  `;
+}
+
+function timelineTypeOptions(selected = 'custom') {
+  const labels = {
+    requirement: '需求',
+    design: '设计',
+    development: '开发',
+    testing: '测试',
+    release: '发布',
+    review: '复盘/评审',
+    custom: '自定义',
+  };
+  return Object.entries(labels).map(([value, label]) => `<option value="${value}" ${selected === value ? 'selected' : ''}>${label}</option>`).join('');
+}
+
+function formFooter() {
+  return `
+    <div class="form-footer">
+      <button type="button" class="button" data-action="close-drawer">取消</button>
+      <button type="submit" class="button primary">保存</button>
+    </div>
+  `;
+}
+
+function openProjectDrawer(mode, project = null) {
+  state.drawer = {
+    type: 'project',
+    mode,
+    draft: structuredClone(project || {
+      id: uid('p'),
+      name: '',
+      description: '',
+      owner: systemUsers()[0]?.id || 'u-1',
+      members: [systemUsers()[0]?.id || 'u-1'],
+      status: 'planning',
+      startDate: today(),
+      endDate: today(),
+      goal: '',
+      teams: ['产品', '研发'],
+      createdAt: today(),
+      updatedAt: today(),
+    }),
+  };
+  render();
+}
+
+function openUserDrawer(mode, user = null) {
+  state.drawer = {
+    type: 'user',
+    mode,
+    draft: structuredClone(user || {
+      id: uid('u'),
+      name: '',
+      email: '',
+      role: 'member',
+      status: 'active',
+    }),
+  };
+  render();
+}
+
+function openSprintDrawer(mode, sprint = null) {
+  const childData = sprint ? sprintChildren(sprint.id) : { milestones: [], requirements: [], timelineNodes: [] };
+  const draft = structuredClone(sprint || {
+    id: uid('s'),
+    projectId: state.selectedProjectId,
+    name: '',
+    goal: '',
+    description: '',
+    owner: firstProjectMember(state.selectedProjectId),
+    status: 'not_started',
+    priority: 'medium',
+    startDate: currentProject()?.startDate || today(),
+    endDate: currentProject()?.endDate || today(),
+    businessGoal: '',
+    deliveryGoal: '',
+    qualityGoal: '',
+    acceptanceCriteria: '',
+    teams: ['产品', '研发'],
+    riskNote: '',
+    createdAt: today(),
+    updatedAt: today(),
+  });
+  draft.milestones = structuredClone(childData.milestones);
+  draft.requirements = structuredClone(childData.requirements);
+  draft.timelineNodes = structuredClone(childData.timelineNodes);
+  state.drawer = { type: 'sprint', mode, draft };
+  render();
+}
+
+function openSprintDrawerAndAppendRepeat(key) {
+  const sprint = currentSprint();
+  if (!sprint) return;
+  openSprintDrawer('edit', sprint);
+  addRepeat(key);
+}
+
+function showToast(message) {
+  state.toast = message;
+  render();
+  window.setTimeout(() => {
+    state.toast = '';
+    render();
+  }, 2200);
+}
+
+function readForm(form) {
+  const formData = new FormData(form);
+  const data = structuredClone(state.drawer.draft);
+
+  for (const [key, value] of formData.entries()) {
+    if (!key.includes('.')) {
+      data[key] = value;
+      continue;
+    }
+    const [collection, rawIndex, fieldName] = key.split('.');
+    const itemIndex = Number(rawIndex);
+    if (!data[collection]) data[collection] = [];
+    if (typeof data[collection][itemIndex] !== 'object' || data[collection][itemIndex] === null) {
+      data[collection][itemIndex] = {};
+    }
+    data[collection][itemIndex][fieldName] = value;
+  }
+
+  const teamsSelect = form.querySelector('select[name="teams"]');
+  if (teamsSelect) {
+    data.teams = Array.from(teamsSelect.selectedOptions).map((option) => option.value);
+  }
+
+  if (data.timelineNodes) {
+    data.timelineNodes = data.timelineNodes.map((node) => ({
+      ...node,
+      isCritical: node.isCritical === true || node.isCritical === 'true',
+    }));
+  }
+
+  if (data.members) {
+    data.members = data.members
+      .map((member) => (typeof member === 'string' ? member : member.name))
+      .filter((member) => member && member.trim())
+      .map((member) => member.trim());
+  }
+
+  return data;
+}
+
+function validateProject(project) {
+  if (!project.name.trim()) return '项目名称不能为空';
+  if (!project.goal.trim()) return '项目目标不能为空';
+  if (!project.members?.length) return '项目至少需要 1 个成员';
+  if (project.endDate < project.startDate) return '项目结束日期不能早于开始日期';
+  return '';
+}
+
+function validateSprint(sprint) {
+  const project = currentProject();
+  if (!sprint.name.trim()) return 'Sprint 名称不能为空';
+  if (!sprint.goal.trim()) return 'Sprint 目标不能为空';
+  if (sprint.endDate < sprint.startDate) return 'Sprint 结束日期不能早于开始日期';
+  if (project && (sprint.startDate < project.startDate || sprint.endDate > project.endDate)) {
+    return 'Sprint 周期必须在项目周期内';
+  }
+
+  const duplicate = state.sprints.find((item) => item.projectId === sprint.projectId && item.id !== sprint.id && item.name === sprint.name);
+  if (duplicate) return '当前项目下 Sprint 名称不能重复';
+
+  const outsideMilestone = sprint.milestones.find((item) => item.date && (item.date < sprint.startDate || item.date > sprint.endDate));
+  if (outsideMilestone) return `里程碑「${outsideMilestone.name || '未命名'}」不在 Sprint 周期内`;
+
+  const outsideTimeline = sprint.timelineNodes.find((item) => item.date && (item.date < sprint.startDate || item.date > sprint.endDate));
+  if (outsideTimeline) return `时间节点「${outsideTimeline.title || '未命名'}」不在 Sprint 周期内`;
+
+  return '';
+}
+
+function validateUser(user) {
+  if (!user.name.trim()) return '用户姓名不能为空';
+  if (!user.email.trim()) return '用户邮箱不能为空';
+  const duplicate = systemUsers().find((item) => item.id !== user.id && item.email === user.email);
+  if (duplicate) return '用户邮箱不能重复';
+  return '';
+}
+
+function saveProject(form) {
+  const project = readForm(form);
+  const error = validateProject(project);
+  if (error) {
+    showToast(error);
+    return;
+  }
+  project.updatedAt = today();
+  if (!project.members.includes(project.owner)) project.members.unshift(project.owner);
+  const index = state.projects.findIndex((item) => item.id === project.id);
+  if (index >= 0) state.projects[index] = project;
+  else state.projects.unshift(project);
+  state.selectedProjectId = project.id;
+  state.drawer = null;
+  persistState();
+  showToast('项目已保存');
+}
+
+function saveSprint(form) {
+  const sprint = readForm(form);
+  const error = validateSprint(sprint);
+  if (error) {
+    showToast(error);
+    return;
+  }
+
+  const requirements = sprint.requirements.map((item) => ({ ...item, id: item.id || uid('r'), sprintId: sprint.id }));
+  const milestones = sprint.milestones.map((item) => ({ ...item, id: item.id || uid('m'), sprintId: sprint.id }));
+  const timelineNodes = sprint.timelineNodes.map((item) => ({ ...item, id: item.id || uid('t'), sprintId: sprint.id, requirementIds: item.requirementIds || [] }));
+  delete sprint.requirements;
+  delete sprint.milestones;
+  delete sprint.timelineNodes;
+  sprint.updatedAt = today();
+
+  const index = state.sprints.findIndex((item) => item.id === sprint.id);
+  if (index >= 0) state.sprints[index] = sprint;
+  else state.sprints.unshift(sprint);
+
+  state.requirements = state.requirements.filter((item) => item.sprintId !== sprint.id).concat(requirements);
+  state.milestones = state.milestones.filter((item) => item.sprintId !== sprint.id).concat(milestones);
+  state.timelineNodes = state.timelineNodes.filter((item) => item.sprintId !== sprint.id).concat(timelineNodes);
+  state.selectedSprintId = sprint.id;
+  state.drawer = null;
+  persistState();
+  showToast('Sprint 已保存');
+}
+
+function saveUser(form) {
+  const user = readForm(form);
+  const error = validateUser(user);
+  if (error) {
+    showToast(error);
+    return;
+  }
+  const index = state.users.findIndex((item) => item.id === user.id);
+  if (index >= 0) state.users[index] = user;
+  else state.users.unshift(user);
+  state.drawer = null;
+  persistState('user.saved');
+  showToast('用户已保存');
+}
+
+function addRepeat(key) {
+  const draft = state.drawer?.draft;
+  if (!draft) return;
+
+  const factories = {
+    members: () => ({
+      name: '',
+    }),
+    requirements: () => ({
+      id: uid('r'),
+      code: `REQ-${String((draft.requirements?.length || 0) + 1).padStart(3, '0')}`,
+      title: '',
+      description: '',
+      priority: 'P1',
+      owner: firstProjectMember(draft.projectId),
+      status: 'draft',
+      milestoneId: '',
+      wetaskUrl: '',
+      expectedDeliveryDate: draft.endDate,
+      acceptanceCriteria: '',
+    }),
+    milestones: () => ({
+      id: uid('m'),
+      name: '',
+      date: draft.endDate,
+      owner: firstProjectMember(draft.projectId),
+      status: 'not_started',
+      description: '',
+      deliverable: '',
+    }),
+    timelineNodes: () => ({
+      id: uid('t'),
+      title: '',
+      type: 'custom',
+      date: draft.endDate,
+      owner: firstProjectMember(draft.projectId),
+      description: '',
+      isCritical: true,
+      status: 'not_started',
+      requirementIds: [],
+    }),
+  };
+
+  draft[key].push(factories[key]());
+  render();
+}
+
+function removeRepeat(key, index) {
+  const draft = state.drawer?.draft;
+  if (!draft) return;
+  draft[key].splice(index, 1);
+  render();
+}
+
+app.addEventListener('click', (event) => {
+  const target = event.target.closest('[data-action]');
+  if (!target) return;
+  const { action, id, key, index } = target.dataset;
+
+  if (action === 'select-project') {
+    state.selectedProjectId = id;
+    state.selectedSprintId = projectSprints(id)[0]?.id || '';
+    state.view = 'overview';
+    render();
+  }
+  if (action === 'open-sprint') {
+    state.selectedSprintId = id;
+    state.view = 'sprintDetail';
+    render();
+  }
+  if (action === 'back-overview') {
+    state.view = 'overview';
+    render();
+  }
+  if (action === 'back-sprint') {
+    state.selectedSprintId = id;
+    state.view = 'sprintDetail';
+    render();
+  }
+  if (action === 'open-requirement') {
+    state.selectedRequirementId = id;
+    state.view = 'requirementDetail';
+    render();
+  }
+  if (action === 'open-milestone') {
+    state.selectedMilestoneId = id;
+    state.view = 'milestoneDetail';
+    render();
+  }
+  if (action === 'open-users') {
+    state.view = 'users';
+    render();
+  }
+  if (action === 'open-overview') {
+    state.view = 'overview';
+    render();
+  }
+  if (action === 'new-project') openProjectDrawer('create');
+  if (action === 'export-csv') exportBundle('csv');
+  if (action === 'export-xls') exportBundle('xls');
+  if (action === 'import-data') document.querySelector('#import-file')?.click();
+  if (action === 'new-user') openUserDrawer('create');
+  if (action === 'edit-user') openUserDrawer('edit', state.users.find((user) => user.id === id));
+  if (action === 'edit-project') openProjectDrawer('edit', state.projects.find((project) => project.id === id));
+  if (action === 'new-sprint') {
+    if (id) {
+      state.selectedProjectId = id;
+      state.selectedSprintId = projectSprints(id)[0]?.id || '';
+    }
+    openSprintDrawer('create');
+  }
+  if (action === 'edit-sprint') openSprintDrawer('edit', state.sprints.find((sprint) => sprint.id === id));
+  if (action === 'add-milestone') openSprintDrawerAndAppendRepeat('milestones');
+  if (action === 'add-timeline-node') openSprintDrawerAndAppendRepeat('timelineNodes');
+  if (action === 'close-drawer') {
+    state.drawer = null;
+    render();
+  }
+  if (action === 'add-repeat') {
+    state.drawer.draft = readForm(target.closest('form'));
+    addRepeat(key);
+  }
+  if (action === 'remove-repeat') {
+    state.drawer.draft = readForm(target.closest('form'));
+    removeRepeat(key, Number(index));
+  }
+  if (action === 'delete-project') deleteProject(id);
+  if (action === 'delete-sprint') deleteSprint(id);
+  if (action === 'delete-user') deleteUser(id);
+});
+
+app.addEventListener('input', (event) => {
+  if (event.target.dataset.action === 'search') {
+    const cursor = event.target.selectionStart;
+    state.search = event.target.value;
+    render();
+    const input = app.querySelector('[data-action="search"]');
+    if (input) {
+      input.focus();
+      input.setSelectionRange(cursor, cursor);
+    }
+  }
+});
+
+app.addEventListener('change', async (event) => {
+  if (event.target.dataset.action === 'project-filter') {
+    state.projectStatus = event.target.value;
+    render();
+  }
+  if (event.target.dataset.action === 'sprint-filter') {
+    state.sprintStatus = event.target.value;
+    render();
+  }
+  if (event.target.id === 'import-file') {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      await importBundle(file);
+      showToast('导入完成');
+    } catch (error) {
+      showToast(`导入失败：${error.message}`);
+    } finally {
+      event.target.value = '';
+    }
+  }
+});
+
+app.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const form = event.target;
+  if (form.dataset.form === 'project') saveProject(form);
+  if (form.dataset.form === 'sprint') saveSprint(form);
+  if (form.dataset.form === 'user') saveUser(form);
+});
+
+function deleteProject(id) {
+  const project = state.projects.find((item) => item.id === id);
+  if (!project || !window.confirm(`确认删除项目「${project.name}」？`)) return;
+  const sprintIds = state.sprints.filter((sprint) => sprint.projectId === id).map((sprint) => sprint.id);
+  state.projects = state.projects.filter((item) => item.id !== id);
+  state.sprints = state.sprints.filter((item) => item.projectId !== id);
+  state.requirements = state.requirements.filter((item) => !sprintIds.includes(item.sprintId));
+  state.milestones = state.milestones.filter((item) => !sprintIds.includes(item.sprintId));
+  state.timelineNodes = state.timelineNodes.filter((item) => !sprintIds.includes(item.sprintId));
+  state.selectedProjectId = state.projects[0]?.id || '';
+  state.selectedSprintId = projectSprints()[0]?.id || '';
+  state.view = 'overview';
+  persistState();
+  showToast('项目已删除');
+}
+
+function deleteSprint(id) {
+  const sprint = state.sprints.find((item) => item.id === id);
+  if (!sprint || !window.confirm(`确认删除 Sprint「${sprint.name}」？`)) return;
+  state.sprints = state.sprints.filter((item) => item.id !== id);
+  state.requirements = state.requirements.filter((item) => item.sprintId !== id);
+  state.milestones = state.milestones.filter((item) => item.sprintId !== id);
+  state.timelineNodes = state.timelineNodes.filter((item) => item.sprintId !== id);
+  state.selectedSprintId = projectSprints()[0]?.id || '';
+  state.view = 'overview';
+  persistState();
+  showToast('Sprint 已删除');
+}
+
+function deleteUser(id) {
+  const user = state.users.find((item) => item.id === id);
+  if (!user || !window.confirm(`确认删除用户「${user.name}」？`)) return;
+  const inUse = state.projects.some((project) => project.owner === id || project.members?.includes(id)) ||
+    state.sprints.some((sprint) => sprint.owner === id) ||
+    state.requirements.some((req) => req.owner === id) ||
+    state.milestones.some((milestone) => milestone.owner === id) ||
+    state.timelineNodes.some((node) => node.owner === id);
+  if (inUse) {
+    showToast('该用户仍被项目或事项引用，不能删除');
+    return;
+  }
+  state.users = state.users.filter((item) => item.id !== id);
+  persistState('user.deleted');
+  showToast('用户已删除');
+}
+
+render();
