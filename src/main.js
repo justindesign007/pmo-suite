@@ -235,41 +235,34 @@ const defaultState = {
 
 const storageKey = 'pmo-sprint-api-cache-v2';
 const backupStorageKey = 'pmo-sprint-api-backups-v1';
+let backupCache = [];
 const apiClient = {
   transport: 'rest',
-  loadState() {
+  usesRemote() {
+    return typeof window.fetch === 'function' && !['file:', ''].includes(window.location?.protocol || '');
+  },
+  loadLocalState() {
     try {
       return JSON.parse(window.localStorage.getItem(storageKey) || 'null');
     } catch {
       return null;
     }
   },
-  saveState(nextState, event) {
-    const { drawer, edit, toast, ...serializableState } = nextState;
-    const auditLogs = [
-      ...(serializableState.auditLogs || []),
-      {
-        id: uid('audit'),
-        at: new Date().toISOString(),
-        actor: 'system',
-        event,
-      },
-    ].slice(-100);
+  saveLocalState(serializableState) {
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify({ ...serializableState, auditLogs }));
+      window.localStorage.setItem(storageKey, JSON.stringify(serializableState));
     } catch {
       // Embedded previews can block file:// localStorage writes; keep the UI flow usable.
     }
-    return auditLogs;
   },
-  loadBackups() {
+  loadLocalBackups() {
     try {
       return JSON.parse(window.localStorage.getItem(backupStorageKey) || '[]');
     } catch {
       return [];
     }
   },
-  saveBackups(backups) {
+  saveLocalBackups(backups) {
     try {
       window.localStorage.setItem(backupStorageKey, JSON.stringify(backups));
     } catch {
@@ -277,11 +270,95 @@ const apiClient = {
     }
     return true;
   },
+  async bootstrap() {
+    backupCache = this.loadLocalBackups();
+    if (!this.usesRemote()) return { state: this.loadLocalState(), backups: backupCache };
+    try {
+      const [stateResponse, backupsResponse] = await Promise.all([
+        window.fetch('/api/state'),
+        window.fetch('/api/backups'),
+      ]);
+      if (!stateResponse.ok || !backupsResponse.ok) throw new Error('API unavailable');
+      const statePayload = await stateResponse.json();
+      const backupsPayload = await backupsResponse.json();
+      backupCache = Array.isArray(backupsPayload.backups) ? backupsPayload.backups : [];
+      const remoteState = statePayload.state || null;
+      if (remoteState) return { state: remoteState, backups: backupCache };
+
+      const localState = this.loadLocalState();
+      if (localState) {
+        await this.saveRemoteState(localState, 'data.migrated.localStorage');
+        await this.saveRemoteBackups(backupCache);
+      }
+      return { state: localState, backups: backupCache };
+    } catch {
+      return { state: this.loadLocalState(), backups: backupCache };
+    }
+  },
+  appendAudit(serializableState, event) {
+    return [
+      ...(serializableState.auditLogs || []),
+      {
+        id: uid('audit'),
+        at: currentLocalMinute(),
+        actor: serializableState.currentUserId || 'system',
+        event,
+        source: this.usesRemote() ? 'client-pending' : 'local',
+      },
+    ].slice(-100);
+  },
+  saveState(nextState, event) {
+    const { drawer, edit, toast, ...serializableState } = nextState;
+    const auditLogs = this.appendAudit(serializableState, event);
+    const nextSerializableState = { ...serializableState, auditLogs };
+    this.saveLocalState(nextSerializableState);
+    if (this.usesRemote()) this.saveRemoteState(nextSerializableState, event);
+    return auditLogs;
+  },
+  async saveRemoteState(nextState, event) {
+    try {
+      const response = await window.fetch('/api/state', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ state: nextState, event }),
+      });
+      if (!response.ok) throw new Error('API save failed');
+      const payload = await response.json();
+      if (Array.isArray(payload.auditLogs)) {
+        state.auditLogs = payload.auditLogs;
+        this.saveLocalState({ ...nextState, auditLogs: payload.auditLogs });
+      }
+    } catch {
+      showToast('服务端暂不可用，已保留浏览器本地副本');
+    }
+  },
+  loadBackups() {
+    return backupCache;
+  },
+  saveBackups(backups) {
+    backupCache = backups;
+    const localSaved = this.saveLocalBackups(backups);
+    if (this.usesRemote()) this.saveRemoteBackups(backups);
+    return localSaved;
+  },
+  async saveRemoteBackups(backups) {
+    try {
+      const response = await window.fetch('/api/backups', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ backups }),
+      });
+      if (!response.ok) throw new Error('API backup save failed');
+    } catch {
+      showToast('服务端备份暂不可用，已保留浏览器本地副本');
+    }
+    return true;
+  },
 };
-const savedState = apiClient.loadState();
-const state = migrateBusinessState(savedState);
+const state = migrateBusinessState(apiClient.loadLocalState());
 const app = document.querySelector('#app');
 let pageRegistry = null;
+let isBooting = apiClient.usesRemote();
 
 normalizeState();
 applyRouteFromHash();
@@ -848,6 +925,22 @@ function ensureSelection() {
 }
 
 function render() {
+  if (isBooting) {
+    app.innerHTML = `
+      <main class="login-page">
+        <section class="login-card panel">
+          <div class="login-brand">
+            <div class="system-logo" aria-hidden="true">
+              <span class="logo-mark"><i></i><i></i><i></i></span>
+            </div>
+            <h1>PMO Suite</h1>
+          </div>
+          <p class="muted">正在连接项目数据服务...</p>
+        </section>
+      </main>
+    `;
+    return;
+  }
   if (!currentUser()) {
     app.innerHTML = renderLoginPage();
     return;
@@ -2713,4 +2806,23 @@ function deleteUser(id) {
   showToast('用户已删除');
 }
 
-render();
+function applyBootState(savedState, backups = []) {
+  const nextState = migrateBusinessState(savedState);
+  Object.keys(state).forEach((key) => delete state[key]);
+  Object.assign(state, nextState);
+  backupCache = backups;
+  normalizeState();
+  applyRouteFromHash();
+}
+
+function startApp() {
+  render();
+  if (!apiClient.usesRemote()) return;
+  apiClient.bootstrap().then(({ state: loadedState, backups }) => {
+    applyBootState(loadedState, backups);
+    isBooting = false;
+    render();
+  });
+}
+
+startApp();

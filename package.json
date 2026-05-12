@@ -1,7 +1,7 @@
 {
-  "name": "pmo-sprint-management-mvp",
+  "name": "pmo-suite",
   "version": "1.0.0",
-  "description": "A lightweight PMO project and Sprint management MVP.",
+  "description": "An open source PMO project and Sprint management system with Express and SQLite.",
   "private": false,
   "type": "module",
   "license": "MIT",
@@ -10,9 +10,13 @@
     "url": "https://github.com/justindesign007/pmo-suite.git"
   },
   "scripts": {
-    "start": "python3 -m http.server 8000",
-    "test": "node --check src/main.js && node --test",
+    "start": "node server/index.js",
+    "start:static": "python3 -m http.server 8000",
+    "test": "node --check src/main.js && node --check server/index.js && node --test",
     "update-meta": "node scripts/update-release-meta.mjs",
     "setup-hooks": "git config core.hooksPath .githooks"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
   }
 }

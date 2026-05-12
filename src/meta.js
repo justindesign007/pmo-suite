@@ -1,8 +1,18 @@
 window.PMO_META = {
-  "version": "0.6.25",
-  "buildDate": "2026-05-12 00:10",
+  "version": "0.6.26",
+  "buildDate": "2026-05-12 12:08",
   "dataSchema": 1,
   "changelog": [
+    {
+      "version": "0.6.26",
+      "date": "2026-05-12 12:08",
+      "message": "Add Express SQLite backend",
+      "points": [
+        "新增 Node.js + Express 后端，统一托管前端静态资源与 REST API",
+        "新增 SQLite 持久化仓储，业务状态和 PMO 备份从浏览器本地存储升级为服务端保存",
+        "前端数据层优先连接服务端接口，并保留 localStorage 作为离线兜底和历史数据迁移来源"
+      ]
+    },
     {
       "version": "0.6.25",
       "date": "2026-05-12 00:10",
