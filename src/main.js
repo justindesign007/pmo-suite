@@ -281,7 +281,10 @@ const apiClient = {
         return { state: sessionPayload.state || null, backups: backupCache };
       }
 
-      const localState = this.loadLocalState() || businessSnapshot();
+      const healthResponse = await window.fetch('/api/health').catch(() => null);
+      const health = healthResponse?.ok ? await healthResponse.json() : {};
+      const localState = this.loadLocalState();
+      if (!health.initialized && !localState) return { state: null, backups: [], setupRequired: true };
       if (localState) {
         await window.fetch('/api/state', {
           method: 'PUT',
@@ -344,6 +347,17 @@ const apiClient = {
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || '登录失败');
     backupCache = Array.isArray(payload.backups) ? payload.backups : [];
+    return payload;
+  },
+  async setup({ account, name, password }) {
+    const response = await window.fetch('/api/setup', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account, name, password }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || '初始化失败');
     return payload;
   },
   async logout() {
@@ -964,6 +978,10 @@ function render() {
     `;
     return;
   }
+  if (state.setupRequired) {
+    app.innerHTML = renderSetupPage();
+    return;
+  }
   if (!currentUser()) {
     app.innerHTML = renderLoginPage();
     return;
@@ -1015,6 +1033,37 @@ function renderLoginPage() {
           </div>
           ${state.loginError ? `<p class="login-error">${escapeHtml(state.loginError)}</p>` : ''}
           <button class="button primary" type="submit">登录</button>
+        </form>
+      </section>
+    </main>
+  `;
+}
+
+function renderSetupPage() {
+  return `
+    <main class="login-page">
+      <section class="login-card panel">
+        <div class="login-brand">
+          <div class="system-logo" aria-hidden="true">
+            <span class="logo-mark"><i></i><i></i><i></i></span>
+          </div>
+          <h1>PMO Suite</h1>
+        </div>
+        <form data-form="setup" class="login-form" novalidate>
+          <div class="field">
+            <label>PMO 用户账号</label>
+            <input name="account" type="text" placeholder="例如 zhangsan" autocomplete="username" required />
+          </div>
+          <div class="field">
+            <label>姓名</label>
+            <input name="name" type="text" placeholder="请输入管理员姓名" required />
+          </div>
+          <div class="field">
+            <label>登录密码</label>
+            <input name="password" type="password" placeholder="请设置初始化密码" autocomplete="new-password" required />
+          </div>
+          ${state.loginError ? `<p class="login-error">${escapeHtml(state.loginError)}</p>` : ''}
+          <button class="button primary" type="submit">初始化系统</button>
         </form>
       </section>
     </main>
@@ -2515,6 +2564,30 @@ async function login(form) {
   render();
 }
 
+async function setupSystem(form) {
+  const data = new FormData(form);
+  const account = String(data.get('account') || '').trim().toLowerCase();
+  const name = String(data.get('name') || '').trim();
+  const password = String(data.get('password') || '');
+  if (!account || !name || !password) {
+    state.loginError = '请输入完整的用户账号、姓名和密码';
+    render();
+    return;
+  }
+  try {
+    const payload = await apiClient.setup({ account, name, password });
+    applyBootState(payload.state, payload.backups || []);
+    state.currentUserId = payload.user?.id || payload.state?.currentUserId || '';
+    state.setupRequired = false;
+    state.loginError = '';
+    state.view = 'overview';
+    render();
+  } catch (error) {
+    state.loginError = error.message || '初始化失败';
+    render();
+  }
+}
+
 function resolveLoginUser(account, password) {
   const exact = systemUsers().find((item) => item.account?.toLowerCase() === account && item.status === 'active');
   if (exact?.password === password) return exact;
@@ -2781,6 +2854,7 @@ app.addEventListener('change', async (event) => {
 app.addEventListener('submit', (event) => {
   event.preventDefault();
   const form = event.target;
+  if (form.dataset.form === 'setup') setupSystem(form);
   if (form.dataset.form === 'login') login(form);
   if (form.dataset.form === 'project') saveProject(form);
   if (form.dataset.form === 'sprint') saveSprint(form);
@@ -2843,8 +2917,8 @@ function deleteUser(id) {
   showToast('用户已删除');
 }
 
-function applyBootState(savedState, backups = []) {
-  const nextState = migrateBusinessState(savedState);
+function applyBootState(savedState, backups = [], setupRequired = false) {
+  const nextState = setupRequired ? { ...migrateBusinessState(null), setupRequired: true, currentUserId: '', users: [], projects: [], sprints: [], requirements: [], milestones: [], timelineNodes: [] } : migrateBusinessState(savedState);
   Object.keys(state).forEach((key) => delete state[key]);
   Object.assign(state, nextState);
   backupCache = backups;
@@ -2855,8 +2929,8 @@ function applyBootState(savedState, backups = []) {
 function startApp() {
   render();
   if (!apiClient.usesRemote()) return;
-  apiClient.bootstrap().then(({ state: loadedState, backups }) => {
-    applyBootState(loadedState, backups);
+  apiClient.bootstrap().then(({ state: loadedState, backups, setupRequired }) => {
+    applyBootState(loadedState, backups, setupRequired);
     isBooting = false;
     render();
   });

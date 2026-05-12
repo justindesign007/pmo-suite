@@ -6,6 +6,7 @@ const log = execFileSync('git', ['log', '--date=format-local:%Y-%m-%d %H:%M', '-
 });
 
 const zhSummary = {
+  'Complete deployment iteration foundations': ['补齐 Docker、环境变量模板、开发启动脚本和结构化日志，为持续运行提供标准部署入口', 'SQLite 在保留快照兼容层的同时同步关系表，并增强健康检查、备份 checksum 和首次初始化接口', '增强 CI、Dependabot、PR 模板和资源级只读 API 雏形，为稳定迭代和后续资源 API 改造打基础'],
   'Harden auth permissions and deployment foundations': ['新增服务端登录会话、密码哈希和安全状态脱敏，降低明文密码与前端鉴权风险', '为 SQLite 增加 schema migrations、revision 乐观锁和 session 存储，提升持续迭代与并发保存安全性', '补充服务端权限校验、仓储安全测试和 GitHub Actions CI，阻止无权限快照写入并自动验证提交质量'],
   'Add Express SQLite backend': ['新增 Node.js + Express 后端，统一托管前端静态资源与 REST API', '新增 SQLite 持久化仓储，业务状态和 PMO 备份从浏览器本地存储升级为服务端保存', '前端数据层优先连接服务端接口，并保留 localStorage 作为离线兜底和历史数据迁移来源'],
   'Restrict PM user management and align timestamps': ['PM 成员管理调整为只读查看，用户新增、编辑和删除仅 PMO 可操作', '成员管理列表按 PMO、PM、成员顺序展示，便于识别账号权限层级', '数据备份时间与版本日志时间统一为 YYYY-MM-DD HH:mm 格式'],

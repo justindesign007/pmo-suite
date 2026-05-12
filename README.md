@@ -39,6 +39,12 @@ npm install
 npm run start
 ```
 
+开发模式会在服务端文件变化时自动重启：
+
+```bash
+npm run dev
+```
+
 然后访问：
 
 ```text
@@ -64,6 +70,13 @@ PORT=3000
 PMO_DB_PATH=./data/pmo-suite.sqlite
 PMO_SESSION_TTL_MS=28800000
 NODE_ENV=production
+LOG_LEVEL=info
+```
+
+也可以使用 Docker Compose 启动，SQLite 数据会保存在 Docker volume 中：
+
+```bash
+docker compose up -d
 ```
 
 如只需要打开旧的纯静态预览，可使用：
@@ -97,11 +110,15 @@ npm test
 当前 REST API：
 
 - `GET /api/health`：服务健康检查
+- `POST /api/setup`：首次初始化 PMO 管理员，仅数据库为空时可用
 - `POST /api/auth/login`：账号密码登录并建立服务端会话
 - `POST /api/auth/logout`：退出登录并清理会话
 - `GET /api/auth/me`：读取当前登录用户、业务状态和备份
 - `GET /api/state`：读取业务状态，需要登录
 - `PUT /api/state`：保存业务状态并追加服务端审计日志，需要登录；首次初始化除外
+- `GET /api/users`：读取脱敏用户列表，需要登录
+- `GET /api/projects`：读取当前账号可见项目，需要登录
+- `GET /api/projects/:id/sprints`：读取当前账号可见项目的 Sprint，需要登录
 - `GET /api/backups`：读取备份列表，需要登录
 - `PUT /api/backups`：保存备份列表，仅 PMO
 
@@ -112,7 +129,11 @@ npm test
 ```bash
 npm ci
 npm test
+git diff --check
+docker build -t pmo-suite-ci .
 ```
+
+CI 还会启动一次 Express 服务并访问 `/api/health` 做 smoke test。Dependabot 每周检查 npm 依赖更新。
 
 本仓库包含本地 Git hook，用于每次提交前自动刷新 `src/meta.js` 中的更新日志。首次克隆后执行：
 

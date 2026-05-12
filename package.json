@@ -11,6 +11,7 @@
   },
   "scripts": {
     "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
     "start:static": "python3 -m http.server 8000",
     "test": "node --check src/main.js && node --check server/index.js && node --test",
     "update-meta": "node scripts/update-release-meta.mjs",

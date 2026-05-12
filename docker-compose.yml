@@ -1,0 +1,17 @@
+services:
+  pmo-suite:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      PMO_DB_PATH: /app/data/pmo-suite.sqlite
+      PMO_SESSION_TTL_MS: 28800000
+      LOG_LEVEL: info
+    volumes:
+      - pmo-suite-data:/app/data
+
+volumes:
+  pmo-suite-data:

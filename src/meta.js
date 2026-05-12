@@ -1,8 +1,18 @@
 window.PMO_META = {
-  "version": "0.6.27",
-  "buildDate": "2026-05-12 14:15",
+  "version": "0.6.28",
+  "buildDate": "2026-05-12 15:58",
   "dataSchema": 1,
   "changelog": [
+    {
+      "version": "0.6.28",
+      "date": "2026-05-12 15:58",
+      "message": "Complete deployment iteration foundations",
+      "points": [
+        "补齐 Docker、环境变量模板、开发启动脚本和结构化日志，为持续运行提供标准部署入口",
+        "SQLite 在保留快照兼容层的同时同步关系表，并增强健康检查、备份 checksum 和首次初始化接口",
+        "增强 CI、Dependabot、PR 模板和资源级只读 API 雏形，为稳定迭代和后续资源 API 改造打基础"
+      ]
+    },
     {
       "version": "0.6.27",
       "date": "2026-05-12 14:15",

@@ -22,3 +22,17 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Check whitespace
+        run: git diff --check
+
+      - name: Smoke test server
+        run: |
+          PMO_DB_PATH=/tmp/pmo-suite-ci.sqlite PORT=3100 npm run start &
+          SERVER_PID=$!
+          trap "kill $SERVER_PID" EXIT
+          sleep 2
+          node -e "const health = await fetch('http://127.0.0.1:3100/api/health').then(r => r.json()); if (!health.ok) process.exit(1);"
+
+      - name: Build Docker image
+        run: docker build -t pmo-suite-ci .

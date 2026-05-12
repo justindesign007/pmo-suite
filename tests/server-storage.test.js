@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { createRepository, openDatabase } from '../server/database.js';
-import { canSaveState, hashPassword, sanitizeStateForClient, secureStateForStorage, validateBusinessState, verifyPassword } from '../server/index.js';
+import { canSaveState, createInitialState, hashPassword, sanitizeStateForClient, secureStateForStorage, validateBusinessState, verifyPassword } from '../server/index.js';
 
 function createTestRepository() {
   const dbPath = join(mkdtempSync(join(tmpdir(), 'pmo-suite-')), 'test.sqlite');
@@ -54,6 +54,9 @@ test('SQLite repository tracks migrations, revision, and auth sessions', () => {
     repository.saveState({ ...state, projects: [{ id: 'p-1', name: '项目', owner: 'u-1', members: ['u-1'] }] });
     assert.equal(repository.getState().revision, 2);
     assert.equal(repository.listMigrations().some((migration) => migration.id === '002_sessions_and_revision'), true);
+    assert.equal(repository.listMigrations().some((migration) => migration.id === '003_relational_business_tables'), true);
+    assert.equal(repository.tableCounts().users, 1);
+    assert.equal(repository.tableCounts().projects, 1);
 
     repository.createSession('token-hash', 'u-1', '2999-01-01 00:00');
     assert.equal(repository.getSession('token-hash').user_id, 'u-1');
@@ -62,6 +65,15 @@ test('SQLite repository tracks migrations, revision, and auth sessions', () => {
   } finally {
     repository.close();
   }
+});
+
+test('setup helper creates initial PMO state without plain text credentials', () => {
+  const state = createInitialState({ account: 'ADMIN', name: '管理员', password: 'safe-pass' });
+  assert.equal(state.users.length, 1);
+  assert.equal(state.users[0].account, 'admin');
+  assert.equal(state.users[0].role, 'pmo');
+  assert.equal(state.users[0].password, undefined);
+  assert.equal(verifyPassword('safe-pass', state.users[0].passwordHash), true);
 });
 
 test('SQLite repository persists backup snapshots in latest-first order', () => {
@@ -156,4 +168,30 @@ test('server validation and permission checks block unsafe snapshot writes', () 
     projects: [{ ...previousState.projects[0], description: '成员尝试修改' }],
   };
   assert.equal(canSaveState(previousState, memberChange, previousState.users[2]).allowed, false);
+});
+
+test('backup checksum is attached through API-compatible enrichment path', () => {
+  const { repository } = createTestRepository();
+  try {
+    const backup = {
+      id: 'backup-checksum',
+      format: 'pmo-suite-backup',
+      version: 1,
+      createdAt: '2026-05-12 12:00',
+      state: {
+        users: [{ id: 'u-1', account: 'zhangsan', name: '张三', role: 'pmo', status: 'active' }],
+        projects: [],
+        sprints: [],
+        requirements: [],
+        milestones: [],
+        timelineNodes: [],
+        auditLogs: [],
+      },
+      checksum: 'manual',
+    };
+    repository.replaceBackups([backup]);
+    assert.equal(repository.listBackups()[0].checksum, 'manual');
+  } finally {
+    repository.close();
+  }
 });
