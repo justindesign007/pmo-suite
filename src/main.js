@@ -274,21 +274,21 @@ const apiClient = {
     backupCache = this.loadLocalBackups();
     if (!this.usesRemote()) return { state: this.loadLocalState(), backups: backupCache };
     try {
-      const [stateResponse, backupsResponse] = await Promise.all([
-        window.fetch('/api/state'),
-        window.fetch('/api/backups'),
-      ]);
-      if (!stateResponse.ok || !backupsResponse.ok) throw new Error('API unavailable');
-      const statePayload = await stateResponse.json();
-      const backupsPayload = await backupsResponse.json();
-      backupCache = Array.isArray(backupsPayload.backups) ? backupsPayload.backups : [];
-      const remoteState = statePayload.state || null;
-      if (remoteState) return { state: remoteState, backups: backupCache };
+      const sessionResponse = await window.fetch('/api/auth/me', { credentials: 'same-origin' });
+      if (sessionResponse.ok) {
+        const sessionPayload = await sessionResponse.json();
+        backupCache = Array.isArray(sessionPayload.backups) ? sessionPayload.backups : [];
+        return { state: sessionPayload.state || null, backups: backupCache };
+      }
 
-      const localState = this.loadLocalState();
+      const localState = this.loadLocalState() || businessSnapshot();
       if (localState) {
-        await this.saveRemoteState(localState, 'data.migrated.localStorage');
-        await this.saveRemoteBackups(backupCache);
+        await window.fetch('/api/state', {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ state: localState, event: 'data.bootstrap.local', revision: localState.revision }),
+        }).catch(() => null);
       }
       return { state: localState, backups: backupCache };
     } catch {
@@ -319,17 +319,39 @@ const apiClient = {
     try {
       const response = await window.fetch('/api/state', {
         method: 'PUT',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state: nextState, event }),
+        body: JSON.stringify({ state: nextState, event, revision: nextState.revision }),
       });
-      if (!response.ok) throw new Error('API save failed');
       const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'API save failed');
       if (Array.isArray(payload.auditLogs)) {
         state.auditLogs = payload.auditLogs;
-        this.saveLocalState({ ...nextState, auditLogs: payload.auditLogs });
+        if (payload.revision) state.revision = payload.revision;
+        this.saveLocalState({ ...nextState, revision: payload.revision || nextState.revision, auditLogs: payload.auditLogs });
       }
+    } catch (error) {
+      showToast(`${error.message || '服务端暂不可用'}，已保留浏览器本地副本`);
+    }
+  },
+  async login(account, password) {
+    const response = await window.fetch('/api/auth/login', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account, password }),
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || '登录失败');
+    backupCache = Array.isArray(payload.backups) ? payload.backups : [];
+    return payload;
+  },
+  async logout() {
+    if (!this.usesRemote()) return;
+    try {
+      await window.fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
     } catch {
-      showToast('服务端暂不可用，已保留浏览器本地副本');
+      // Local logout should not be blocked by a network failure.
     }
   },
   loadBackups() {
@@ -345,6 +367,7 @@ const apiClient = {
     try {
       const response = await window.fetch('/api/backups', {
         method: 'PUT',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ backups }),
       });
@@ -2269,8 +2292,8 @@ function validateUser(user) {
   user.name = String(user.name || '').trim();
   if (!user.name) return '用户姓名不能为空';
   if (!user.account) return '用户账号不能为空';
-  if (!user.password?.trim()) return '登录密码不能为空';
-  if (user.password !== user.confirmPassword) return '两次输入的密码不一致';
+  if (!user.password?.trim() && !user.hasPassword) return '登录密码不能为空';
+  if (user.password && user.password !== user.confirmPassword) return '两次输入的密码不一致';
   if (!isPmo() && normalizeRole(user.role) !== 'member') return 'PM 只能创建或编辑成员账号';
   const duplicateAccount = systemUsers().find((item) => item.id !== user.id && item.account === user.account);
   if (duplicateAccount) return '用户账号不能重复';
@@ -2437,8 +2460,7 @@ function saveUser(form) {
   const existing = state.users.find((item) => item.id === user.id);
   if (!requirePermission(isPmo(), '只有 PMO 可以保存用户')) return;
   if (!user.password && existing) {
-    user.password = existing.password;
-    user.confirmPassword = existing.password;
+    user.hasPassword = existing.hasPassword || Boolean(existing.password);
   }
   user.status = 'active';
   user.authManaged = true;
@@ -2456,7 +2478,7 @@ function saveUser(form) {
   showToast('用户已保存');
 }
 
-function login(form) {
+async function login(form) {
   if (!form) return;
   const data = new FormData(form);
   const account = String(data.get('account') || '').trim().toLowerCase();
@@ -2464,6 +2486,20 @@ function login(form) {
   if (!account || !password) {
     state.loginError = '请输入完整的用户账号和密码';
     render();
+    return;
+  }
+  if (apiClient.usesRemote()) {
+    try {
+      const payload = await apiClient.login(account, password);
+      applyBootState(payload.state, payload.backups || []);
+      state.currentUserId = payload.user?.id || payload.state?.currentUserId || '';
+      state.loginError = '';
+      state.view = 'overview';
+      render();
+    } catch (error) {
+      state.loginError = error.message || '用户账号或密码不正确，或账号未启用';
+      render();
+    }
     return;
   }
   const user = resolveLoginUser(account, password);
@@ -2496,6 +2532,7 @@ function resolveLoginUser(account, password) {
 }
 
 function logout() {
+  apiClient.logout();
   state.currentUserId = '';
   state.loginError = '';
   state.drawer = null;

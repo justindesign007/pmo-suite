@@ -6,6 +6,7 @@ const log = execFileSync('git', ['log', '--date=format-local:%Y-%m-%d %H:%M', '-
 });
 
 const zhSummary = {
+  'Harden auth permissions and deployment foundations': ['新增服务端登录会话、密码哈希和安全状态脱敏，降低明文密码与前端鉴权风险', '为 SQLite 增加 schema migrations、revision 乐观锁和 session 存储，提升持续迭代与并发保存安全性', '补充服务端权限校验、仓储安全测试和 GitHub Actions CI，阻止无权限快照写入并自动验证提交质量'],
   'Add Express SQLite backend': ['新增 Node.js + Express 后端，统一托管前端静态资源与 REST API', '新增 SQLite 持久化仓储，业务状态和 PMO 备份从浏览器本地存储升级为服务端保存', '前端数据层优先连接服务端接口，并保留 localStorage 作为离线兜底和历史数据迁移来源'],
   'Restrict PM user management and align timestamps': ['PM 成员管理调整为只读查看，用户新增、编辑和删除仅 PMO 可操作', '成员管理列表按 PMO、PM、成员顺序展示，便于识别账号权限层级', '数据备份时间与版本日志时间统一为 YYYY-MM-DD HH:mm 格式'],
   'Expand backup portability and product positioning': ['备份范围覆盖核心业务数据、审计日志和可选体验状态', '新增 PMO 备份文件导出和导入恢复能力，降低本地或服务端存储异常造成的数据丢失风险', '移除产品 MVP 定位表述，并优化成员管理表格列宽与间距'],

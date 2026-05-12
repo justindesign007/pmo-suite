@@ -1,8 +1,18 @@
 window.PMO_META = {
-  "version": "0.6.26",
-  "buildDate": "2026-05-12 12:08",
+  "version": "0.6.27",
+  "buildDate": "2026-05-12 14:15",
   "dataSchema": 1,
   "changelog": [
+    {
+      "version": "0.6.27",
+      "date": "2026-05-12 14:15",
+      "message": "Harden auth permissions and deployment foundations",
+      "points": [
+        "新增服务端登录会话、密码哈希和安全状态脱敏，降低明文密码与前端鉴权风险",
+        "为 SQLite 增加 schema migrations、revision 乐观锁和 session 存储，提升持续迭代与并发保存安全性",
+        "补充服务端权限校验、仓储安全测试和 GitHub Actions CI，阻止无权限快照写入并自动验证提交质量"
+      ]
+    },
     {
       "version": "0.6.26",
       "date": "2026-05-12 12:08",
